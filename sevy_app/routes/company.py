@@ -1,0 +1,17 @@
+from django.urls import path
+from sevy_app.views.company import get_company_bookings, get_company_requests, get_company_dashboard, get_company_cars, create_car, edit_car, get_latest_cars, withdraw, delete_company, register_company, review_company, update_company_documents
+
+urlpatterns = [
+    path('bookings/', get_company_bookings, name='get_company_bookings'),
+    path('requests/', get_company_requests, name='get_company_requests'),
+    path('getcompany/', get_company_dashboard, name='get_company_dashboard'),
+    path('cars/', get_company_cars, name='get_company_cars'),
+    path('create-car/', create_car, name='create_company_car'),
+    path('edit-car/', edit_car, name='edit_company_car'),
+    path('latest-cars/', get_latest_cars, name='get_latest_cars'),
+    path('withdraw/', withdraw, name='withdraw'),
+    path('delete/', delete_company, name='delete_company'),
+    path('register/', register_company, name='register_company'),
+    path('review/', review_company, name='review_company'),
+    path('<str:company_id>/update-documents/', update_company_documents, name='update_company_documents'),
+]
