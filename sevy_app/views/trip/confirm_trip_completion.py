@@ -68,6 +68,14 @@ def confirm_trip_completion(request):
                     notification_type='trip_approval',
                     related_id=trip.trip_id
                 )
+                
+                if trip.driverid.userid.email:
+                    from sevy_app.utils.email_service import send_notification_email
+                    send_notification_email(
+                        to_email=trip.driverid.userid.email,
+                        subject="Trip Completion Denied",
+                        message=f"The customer has denied the completion request for trip {trip.tracking_number or trip.trip_id}. Support will review it."
+                    )
             
             # Notify admins of the dispute
             notify_admins(
@@ -103,6 +111,14 @@ def confirm_trip_completion(request):
                     notification_type='trip_approval',
                     related_id=trip.trip_id
                 )
+                
+                if trip.driverid.userid.email:
+                    from sevy_app.utils.email_service import send_notification_email
+                    send_notification_email(
+                        to_email=trip.driverid.userid.email,
+                        subject="Trip Confirmed",
+                        message=f"The customer has confirmed the completion of trip {trip.tracking_number or trip.trip_id}."
+                    )
             
             # Notify admins of completion
             notify_admins(
@@ -111,6 +127,19 @@ def confirm_trip_completion(request):
                 notification_type="trip",
                 related_id=trip.trip_id
             )
+            
+            # Email Customer
+            if trip.userid and trip.userid.email:
+                from sevy_app.utils.email_service import send_notification_email
+                customer_name = trip.userid.user_info.full_names if hasattr(trip.userid, 'user_info') else 'Customer'
+                send_notification_email(
+                    to_email=trip.userid.email,
+                    subject="Trip Completed",
+                    name=customer_name,
+                    message=f"Thank you for riding with Sevy Mobility! Your trip {trip.tracking_number or trip.trip_id} has been marked as completed.",
+                    action_text="View Receipt",
+                    action_url="https://sevymobility.com/trips"
+                )
             
             return Response({
                 "code": 200,

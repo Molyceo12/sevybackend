@@ -90,6 +90,18 @@ def withdraw(request):
             related_id=transaction.transaction_id
         )
         
+        if company.user and company.user.email:
+            from sevy_app.utils.email_service import send_notification_email
+            company_name = company.user.user_info.full_names if hasattr(company.user, 'user_info') else 'Partner'
+            send_notification_email(
+                to_email=company.user.email,
+                subject="Withdrawal Request Received",
+                name=company_name,
+                message=f"We have received your withdrawal request for {amount} RWF. It is currently pending admin approval and will be processed shortly.",
+                action_text="View Dashboard",
+                action_url="https://sevymobility.com"
+            )
+        
         # Set the 3-minute lock after a successful withdrawal
         cache.set(cache_key, True, timeout=180)
 

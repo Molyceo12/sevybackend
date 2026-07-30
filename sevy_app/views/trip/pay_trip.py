@@ -152,13 +152,13 @@ def pay_trip(request):
         trip.transaction = customer_transaction
         trip.save()
         
-        # Trigger Celery timeout task for 2 minutes (120 seconds) for the driver
+        # Trigger Celery timeout task for 8 minutes (480 seconds) for the driver
         from sevy_app.tasks import trip_timeout_task
         try:
             print(f"\n:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::")
             print(f"Trip {trip.trip_id} is paid and received in celery")
             print(f":::::::::::::::::::::::::::::::\n")
-            trip_timeout_task.apply_async((trip.trip_id, 'waiting'), countdown=120)
+            trip_timeout_task.apply_async((trip.trip_id, 'waiting'), countdown=480)
         except Exception as celery_err:
             print(f"Failed to schedule celery task: {celery_err}")
         
@@ -171,12 +171,59 @@ def pay_trip(request):
             related_id=customer_transaction.transaction_id
         )
         
+        # Send FCM Notification to the Customer
+        from sevy_app.utils.fcm_service import send_fcm_notification
+        send_fcm_notification(
+            user=user,
+            title="Payment Successful",
+            body=f"Your trip payment of {total_amount} RWF was successful."
+        )
+        
         notify_admins(
             title="Payment to Driver Successful",
             message=f"Payment to driver successfully made for trip {trip.trip_id} (Net: {driver_net} RWF).",
             notification_type='transaction',
             related_id=customer_transaction.transaction_id
         )
+        
+        # Send Trip Receipt Email
+        from sevy_app.utils.email_service import send_customer_email, send_notification_email
+        send_customer_email(
+            to_email=user.email,
+            subject="Your Trip Receipt",
+            template_name="trip_receipt.html",
+            context={
+                "name": user.user_info.full_names if hasattr(user, 'user_info') else user.email,
+                "trip_id": trip.tracking_number if trip.tracking_number else trip.trip_id,
+                "amount": round(total_amount, 2),
+                "payment_method": payment_method,
+                "date": customer_transaction.created_at.strftime('%Y-%m-%d %H:%M') if hasattr(customer_transaction, 'created_at') else ""
+            }
+        )
+        
+        # Send Assignment Email to Driver
+        if trip.driverid and hasattr(trip.driverid, 'email'):
+            driver_name = trip.driverid.user_info.full_names if hasattr(trip.driverid, 'user_info') else 'Driver'
+            send_notification_email(
+                to_email=trip.driverid.email,
+                subject="New Trip Assigned!",
+                name=driver_name,
+                message=f"You have been assigned to a new trip (ID: {trip.tracking_number if trip.tracking_number else trip.trip_id}). The customer has successfully paid for the trip and is waiting. Please log into the app to view the trip details and start navigation.",
+                details={
+                    "Pickup Location": trip.pickup_location,
+                    "Dropoff Location": trip.dropoff_location,
+                    "Distance": f"{trip.distance_km} km" if trip.distance_km else "N/A"
+                },
+                action_text="View Trip",
+                action_url="https://sevymobility.com"
+            )
+            
+            # Send FCM Notification to the Driver
+            send_fcm_notification(
+                user=trip.driverid.userid,
+                title="New Trip Assigned!",
+                body="A customer has paid for a trip and is waiting for you."
+            )
         
         return Response({
             "code": 201,

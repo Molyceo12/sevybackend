@@ -72,6 +72,25 @@ def reject_transaction(request):
                 notification_type="transaction",
                 related_id=transaction.transaction_id
             )
+            
+            # Email the company
+            if hasattr(user, 'email') and user.email:
+                from sevy_app.utils.email_service import send_notification_email
+                company_name = user.user_info.full_names if hasattr(user, 'user_info') else 'Partner'
+                send_notification_email(
+                    to_email=user.email,
+                    subject="Transaction Rejected",
+                    name=company_name,
+                    message=f"Your transaction of {transaction.amount} {transaction.currency} could not be processed and has been rejected.",
+                    details={
+                        "Transaction ID": transaction.tracking_number if getattr(transaction, 'tracking_number', None) else transaction.transaction_id,
+                        "Amount": f"{transaction.amount} {transaction.currency}",
+                        "Status": "Rejected",
+                        "Resolution": "The amount has been refunded to your account balance."
+                    },
+                    action_text="Contact Support",
+                    action_url="mailto:support@sevymobility.com"
+                )
 
         elif hasattr(user, 'driver_profile'):
             driver = user.driver_profile
@@ -90,6 +109,25 @@ def reject_transaction(request):
                 notification_type="transaction",
                 related_id=transaction.transaction_id
             )
+            
+            # Email the driver
+            if hasattr(user, 'email') and user.email:
+                from sevy_app.utils.email_service import send_notification_email
+                driver_name = user.user_info.full_names if hasattr(user, 'user_info') else 'Driver'
+                send_notification_email(
+                    to_email=user.email,
+                    subject="Transaction Rejected",
+                    name=driver_name,
+                    message=f"Your transaction of {transaction.amount} {transaction.currency} could not be processed and has been rejected.",
+                    details={
+                        "Transaction ID": transaction.tracking_number if getattr(transaction, 'tracking_number', None) else transaction.transaction_id,
+                        "Amount": f"{transaction.amount} {transaction.currency}",
+                        "Status": "Rejected",
+                        "Resolution": "The amount has been refunded to your account balance."
+                    },
+                    action_text="Contact Support",
+                    action_url="mailto:support@sevymobility.com"
+                )
 
     # Notify the admin
     Notification.objects.create(

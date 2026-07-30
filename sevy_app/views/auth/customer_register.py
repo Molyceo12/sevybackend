@@ -9,6 +9,16 @@ class CustomerRegistrationView(APIView):
         
         if serializer.is_valid():
             user = serializer.save()
+            
+            # Send Welcome Email
+            from sevy_app.utils.email_service import send_customer_email
+            send_customer_email(
+                to_email=user.email,
+                subject="Welcome to Sevy Mobility!",
+                template_name="welcome.html",
+                context={"name": user.user_info.full_names}
+            )
+            
             return Response({
                 "code": 200,
                 "status": True,

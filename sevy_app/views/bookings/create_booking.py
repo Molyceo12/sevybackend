@@ -95,9 +95,9 @@ def create_booking(request):
                 related_id=booking.booking_id
             )
             
-            # Start the 2-minute timeout task
+            # Start the 8-minute timeout task
             from sevy_app.tasks import booking_timeout_task
-            booking_timeout_task.apply_async((booking.booking_id,), countdown=120)
+            booking_timeout_task.apply_async((booking.booking_id,), countdown=480)
 
         # Notify the customer
         from sevy_app.models import Notification
@@ -108,6 +108,8 @@ def create_booking(request):
             notification_type='rental',
             related_id=booking.booking_id
         )
+        
+
         
         # Notify the company
         company_user = getattr(booking.companyid, 'company_id', None) if booking.companyid else None
@@ -122,6 +124,14 @@ def create_booking(request):
                 notification_type='rental',
                 related_id=booking.booking_id
             )
+            
+            if company_user.email:
+                from sevy_app.utils.email_service import send_notification_email
+                send_notification_email(
+                    to_email=company_user.email,
+                    subject="New Booking Request",
+                    message=f"A new booking request has been made for your {car.brand} {car.name} from {start_date} to {end_date}. Please review it in your dashboard."
+                )
             
         # Notify admins
         notify_admins(

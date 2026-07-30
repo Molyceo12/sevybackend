@@ -74,6 +74,24 @@ def approve_transaction(request):
                 notification_type="transaction",
                 related_id=transaction.transaction_id
             )
+            
+            # Email the company
+            if hasattr(user, 'email') and user.email:
+                from sevy_app.utils.email_service import send_notification_email
+                company_name = user.user_info.full_names if hasattr(user, 'user_info') else 'Partner'
+                send_notification_email(
+                    to_email=user.email,
+                    subject="Transaction Approved",
+                    name=company_name,
+                    message=f"Your transaction of {transaction.amount} {transaction.currency} has been approved and processed.",
+                    details={
+                        "Transaction ID": transaction.tracking_number if getattr(transaction, 'tracking_number', None) else transaction.transaction_id,
+                        "Amount": f"{transaction.amount} {transaction.currency}",
+                        "Status": "Approved"
+                    },
+                    action_text="View Dashboard",
+                    action_url="https://sevymobility.com"
+                )
 
         elif hasattr(user, 'driver_profile'):
             driver = user.driver_profile
@@ -92,6 +110,24 @@ def approve_transaction(request):
                 notification_type="transaction",
                 related_id=transaction.transaction_id
             )
+            
+            # Email the driver
+            if hasattr(user, 'email') and user.email:
+                from sevy_app.utils.email_service import send_notification_email
+                driver_name = user.user_info.full_names if hasattr(user, 'user_info') else 'Driver'
+                send_notification_email(
+                    to_email=user.email,
+                    subject="Transaction Approved",
+                    name=driver_name,
+                    message=f"Your transaction of {transaction.amount} {transaction.currency} has been approved and processed.",
+                    details={
+                        "Transaction ID": transaction.tracking_number if getattr(transaction, 'tracking_number', None) else transaction.transaction_id,
+                        "Amount": f"{transaction.amount} {transaction.currency}",
+                        "Status": "Approved"
+                    },
+                    action_text="View Dashboard",
+                    action_url="https://sevymobility.com"
+                )
 
     # Notify the admin
     Notification.objects.create(

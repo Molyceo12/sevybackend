@@ -30,6 +30,18 @@ def review_company(request):
             company.is_verified = True
             company.is_cancelled = False
             company.save()
+            company.save()
+            
+            if company.company_id and company.company_id.email:
+                from sevy_app.utils.email_service import send_notification_email
+                send_notification_email(
+                    to_email=company.company_id.email,
+                    subject="Your Company Account is Approved!",
+                    message="Great news! Your company registration has been reviewed and approved. You can now manage your fleet.",
+                    action_text="Log In",
+                    action_url="https://sevymobility.com"
+                )
+                
             return Response({
                 "status": True, 
                 "message": "Company approved successfully.", 
@@ -41,6 +53,18 @@ def review_company(request):
             company.is_cancelled = True
             company.cancellation_reason = reason
             company.save()
+            company.save()
+            
+            if company.company_id and company.company_id.email:
+                from sevy_app.utils.email_service import send_notification_email
+                send_notification_email(
+                    to_email=company.company_id.email,
+                    subject="Update on your Company Registration",
+                    message=f"We have reviewed your registration. Unfortunately, it was rejected.<br><br>Reason: {reason}",
+                    action_text="Contact Support",
+                    action_url="mailto:support@sevymobility.com"
+                )
+                
             return Response({
                 "status": True, 
                 "message": "Company cancelled successfully.", 

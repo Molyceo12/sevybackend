@@ -132,6 +132,11 @@ class CompanyRegistrationSerializer(serializers.Serializer):
         required=False,
         allow_blank=True
     )
+    company_type = serializers.ChoiceField(
+        choices=['carrental', 'tourism'],
+        required=True,
+        error_messages={'required': 'Company type is required', 'invalid_choice': 'Invalid company type'}
+    )
     phone_number = serializers.CharField(
         required=True,
         error_messages={'required': 'Phone number is required', 'blank': 'Phone number cannot be empty'}
@@ -181,6 +186,7 @@ class CompanyRegistrationSerializer(serializers.Serializer):
                 phone_number=validated_data['phone_number'],
                 location=validated_data.get('location', ''),
                 profile_image=validated_data.get('profile_image', ''),
+                company_type=validated_data['company_type'],
                 rdb_certificate_url=validated_data.get('rdb_certificate_url', ''),
                 owner_id_url=validated_data.get('owner_id_url', '')
             )

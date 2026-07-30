@@ -65,6 +65,7 @@ def get_company_dashboard(request):
                 "is_cancelled": company.is_cancelled,
                 "cancellation_reason": company.cancellation_reason,
                 "location": company.location,
+                "company_type": company.company_type,
                 "balance": float(company.balance),
                 "bonuses": float(company.bonuses)
             },
@@ -88,6 +89,15 @@ def get_company_dashboard(request):
             },
             "total_earnings": total_earnings
         }
+        
+        if company.company_type == 'tourism':
+            from sevy_app.models import Explore
+            total_places = Explore.objects.filter(companyid=company.company_id_id).count()
+            response_data["tourism"] = {
+                "total_places": total_places,
+                "active_bookings": 0,
+                "total_revenue": 0.0
+            }
 
         return Response({
             "status": "success",

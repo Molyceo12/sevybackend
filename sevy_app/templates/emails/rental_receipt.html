@@ -1,0 +1,53 @@
+{% extends "emails/base.html" %}
+
+{% block content %}
+<h1 style="text-transform: uppercase;">CAR BOOKING RECEIPT</h1>
+
+<div style="font-size: 13px; color: #4a4a4a; margin-bottom: 30px; line-height: 1.5;">
+    <div>Transaction ID: {{ transaction_id }}</div>
+    <div>Date: {{ date }}</div>
+</div>
+
+<div class="invoice-box">
+    <h3 class="invoice-section-title">Booking Information</h3>
+    <div class="divider"></div>
+    
+    <div class="invoice-row">
+        <div class="invoice-label">Car Model</div>
+        <div class="invoice-value">{{ car_name }}</div>
+    </div>
+    <div class="invoice-row">
+        <div class="invoice-label">Rental Date</div>
+        <div class="invoice-value">{{ rental_date_range }}</div>
+    </div>
+    <div class="invoice-row">
+        <div class="invoice-label">Customer Name</div>
+        <div class="invoice-value">{{ name }}</div>
+    </div>
+</div>
+
+<div class="invoice-box">
+    <h3 class="invoice-section-title">Financial Breakdown</h3>
+    <div class="divider"></div>
+    
+    <div class="invoice-row">
+        <div class="invoice-label">Car Amount</div>
+        <div class="invoice-value">{{ car_amount }} RWF</div>
+    </div>
+    <div class="invoice-row">
+        <div class="invoice-label">Driver Amount</div>
+        <div class="invoice-value">{{ driver_amount }} RWF</div>
+    </div>
+    <div class="invoice-row">
+        <div class="invoice-label">Service Fee</div>
+        <div class="invoice-value">{{ service_fee }} RWF</div>
+    </div>
+    
+    <div class="dashed-divider"></div>
+    
+    <div class="invoice-row total-row">
+        <div class="invoice-label total-label">Total Amount</div>
+        <div class="invoice-value total-value">{{ amount }} RWF</div>
+    </div>
+</div>
+{% endblock %}

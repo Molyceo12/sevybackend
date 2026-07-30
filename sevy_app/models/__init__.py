@@ -1,6 +1,7 @@
 from django.db import models
 from .user import CustomUser
 from .user_info import UserInfo
+from .fcm_user import FCMUser
 from .user_search import UserSearch
 from .location import Location
 from .explore import Explore, ExploreCategory

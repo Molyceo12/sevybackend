@@ -44,6 +44,14 @@ def request_trip_completion(request):
             related_id=trip.trip_id
         )
 
+        if trip.userid and trip.userid.email:
+            from sevy_app.utils.email_service import send_notification_email
+            send_notification_email(
+                to_email=trip.userid.email,
+                subject="Action Required: Confirm Trip Completion",
+                message="Your driver has marked this trip as completed. Please log into the app and confirm or report this trip within the next 2 hours."
+            )
+
         # Update the trip's approval_status to 'requestsent'
         trip.approval_status = 'requestsent'
         trip.save()

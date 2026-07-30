@@ -191,11 +191,11 @@ def pay_booking(request):
         except Exception as celery_err:
             print(f"Failed to schedule car availability tasks: {celery_err}")
             
-        # Schedule Driver 2-minute countdown (if applicable)
+        # Schedule Driver 8-minute countdown (if applicable)
         if booking.booking_type == 'with_driver' and booking.driver:
             try:
-                booking_timeout_task.apply_async((booking.booking_id,), countdown=120)
-                print(f"Scheduled 2-minute timeout for booking {booking.booking_id} driver.")
+                booking_timeout_task.apply_async((booking.booking_id,), countdown=480)
+                print(f"Scheduled 8-minute timeout for booking {booking.booking_id} driver.")
             except Exception as celery_err:
                 print(f"Failed to schedule booking timeout task: {celery_err}")
         
@@ -239,6 +239,59 @@ def pay_booking(request):
             notification_type='transaction',
             related_id=customer_transaction.transaction_id
         )
+        
+        # Send Rental Receipt Email
+        from sevy_app.utils.email_service import send_customer_email, send_notification_email
+        send_customer_email(
+            to_email=user.email,
+            subject="Rental Receipt",
+            template_name="rental_receipt.html",
+            context={
+                "name": user.user_info.full_names if hasattr(user, 'user_info') else user.email,
+                "booking_id": booking.booking_id,
+                "transaction_id": customer_transaction.tracking_number if getattr(customer_transaction, 'tracking_number', None) else customer_transaction.transaction_id,
+                "date": customer_transaction.created_at.strftime('%d %b %Y - %I:%M %p') if hasattr(customer_transaction, 'created_at') else "",
+                "car_name": f"{booking.car.brand} {booking.car.name}" if booking.car else "Vehicle",
+                "rental_date_range": f"{booking.start_date.strftime('%d %b %y')} - {booking.end_date.strftime('%d %b %y')}",
+                "car_amount": round(company_gross, 2),
+                "driver_amount": round(driver_gross, 2),
+                "service_fee": round(company_commission + driver_commission, 2),
+                "amount": round(total_amount, 2),
+                "payment_method": payment_method
+            }
+        )
+        
+        # Send email to Driver
+        if booking.driver and booking.driver.userid and hasattr(booking.driver.userid, 'email'):
+            driver_name = booking.driver.userid.user_info.full_names if hasattr(booking.driver.userid, 'user_info') else 'Driver'
+            send_notification_email(
+                to_email=booking.driver.userid.email,
+                subject="New Rental Booking Assigned!",
+                name=driver_name,
+                message=f"You have been assigned to a new car rental booking. The customer has successfully paid for the booking.",
+                details={
+                    "Car": f"{booking.car.brand} {booking.car.name}" if booking.car else "Vehicle",
+                    "Rental Period": f"{booking.start_date.strftime('%d %b %y')} - {booking.end_date.strftime('%d %b %y')}",
+                },
+                action_text="View Booking",
+                action_url="https://sevymobility.com"
+            )
+
+        # Send email to Company
+        if company_user and hasattr(company_user, 'email'):
+            company_name = company_user.user_info.full_names if hasattr(company_user, 'user_info') else 'Partner'
+            send_notification_email(
+                to_email=company_user.email,
+                subject="Payment Received for Car Rental",
+                name=company_name,
+                message=f"A customer has successfully paid for the rental of your {booking.car.brand} {booking.car.name}.",
+                details={
+                    "Rental Period": f"{booking.start_date.strftime('%d %b %y')} - {booking.end_date.strftime('%d %b %y')}",
+                    "Gross Amount": f"{company_gross} RWF"
+                },
+                action_text="View Booking",
+                action_url="https://sevymobility.com"
+            )
         
         return Response({
             "code": 201,

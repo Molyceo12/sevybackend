@@ -26,6 +26,15 @@ def register_company(request):
                     notification_type="system",
                     related_id=user.custom_id[:20]
                 )
+                from sevy_app.utils.email_service import send_notification_email
+                send_notification_email(
+                    to_email=user.email,
+                    subject="Welcome to Sevy Mobility!",
+                    name=user.user_info.full_names,
+                    message="Thank you for registering your company with Sevy Mobility. We have received your application and our team is currently reviewing your profile and documents. We will notify you once your account has been approved.",
+                    action_text="Visit Dashboard",
+                    action_url="https://sevymobility.com"
+                )
             except Exception as e:
                 print("Notification failed, but company registered:", e)
             

@@ -66,6 +66,19 @@ def create_car(request):
             images=data.get('images', []),
             status=data.get('status', 'available')
         )
+        
+        if company.company_id and company.company_id.email:
+            from sevy_app.utils.email_service import send_notification_email
+            company_name = company.company_id.user_info.full_names if hasattr(company.company_id, 'user_info') else 'Partner'
+            send_notification_email(
+                to_email=company.company_id.email,
+                subject="New Car Added Successfully",
+                name=company_name,
+                message=f"Your new car listing for {car.brand} {car.name} has been successfully created and is now visible on the platform.",
+                action_text="View Fleet",
+                action_url="https://sevymobility.com/dashboard/cars"
+            )
+
 
         return Response({
             "status": "success",

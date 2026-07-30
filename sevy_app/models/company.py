@@ -8,6 +8,18 @@ class Company(models.Model):
     company_id = models.OneToOneField('sevy_app.CustomUser', on_delete=models.CASCADE, primary_key=True, related_name='company_profile', help_text="Links to auth User for password & login", db_column='company_id')
     host_name = models.CharField(max_length=255, help_text="Name of the individual host/owner e.g. Hela Quintin")
     company_name = models.CharField(max_length=255, null=True, blank=True, help_text="Optional name of the registered company")
+    
+    COMPANY_TYPE_CHOICES = (
+        ('carrental', 'Car Rental'),
+        ('tourism', 'Tourism'),
+    )
+    company_type = models.CharField(
+        max_length=20, 
+        choices=COMPANY_TYPE_CHOICES, 
+        default='carrental',
+        help_text="Type of the company"
+    )
+
     profile_image = models.CharField(max_length=500, null=True, blank=True, help_text="URL or path to profile image")
     is_verified = models.BooleanField(default=False)
     is_cancelled = models.BooleanField(default=False, help_text="True if the company registration was denied/cancelled")

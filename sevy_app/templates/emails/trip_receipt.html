@@ -1,0 +1,41 @@
+{% extends 'emails/base.html' %}
+
+{% block content %}
+    <h1>TRIP RECEIPT</h1>
+    
+    <p>Hi {{ name }},</p>
+    <p>Thanks for riding with Sevy Mobility. Your payment was successful and your trip is now complete!</p>
+
+    <div class="invoice-box">
+        <h3 class="invoice-section-title">Trip Information</h3>
+        <div class="divider"></div>
+        
+        <div class="invoice-row">
+            <div class="invoice-label">Trip No</div>
+            <div class="invoice-value">{{ trip_id }}</div>
+        </div>
+        
+        <div class="invoice-row">
+            <div class="invoice-label">Payment Method</div>
+            <div class="invoice-value">{{ payment_method }}</div>
+        </div>
+
+        <div class="invoice-row">
+            <div class="invoice-label">Date</div>
+            <div class="invoice-value">{{ date }}</div>
+        </div>
+
+        <div class="dashed-divider"></div>
+
+        <div class="invoice-row total-row">
+            <div class="invoice-label total-label">Total Amount</div>
+            <div class="invoice-value total-value">{{ amount }} RWF</div>
+        </div>
+    </div>
+
+    <p style="text-align: center; margin-top: 30px;">We hope you had a great experience. We look forward to seeing you again soon!</p>
+    
+    <div style="text-align: center;">
+        <a href="https://sevymobility.com" class="btn">Book Another Trip</a>
+    </div>
+{% endblock %}

@@ -6,3 +6,4 @@ from .get_user_trips import get_user_trips
 from .get_user_bookings import get_user_bookings
 from .logout import logout
 from .has_unread_notifications import has_unread_notifications
+from .update_fcm_token import update_fcm_token

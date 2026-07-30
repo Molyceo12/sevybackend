@@ -89,6 +89,18 @@ def withdraw(request):
             related_id=transaction.transaction_id
         )
         
+        if driver.userid and driver.userid.email:
+            from sevy_app.utils.email_service import send_notification_email
+            driver_name = driver.userid.user_info.full_names if hasattr(driver.userid, 'user_info') else 'Driver'
+            send_notification_email(
+                to_email=driver.userid.email,
+                subject="Withdrawal Request Received",
+                name=driver_name,
+                message=f"We have received your withdrawal request for {amount} RWF. It is currently pending admin approval and will be processed shortly.",
+                action_text="View Dashboard",
+                action_url="https://sevymobility.com"
+            )
+        
         # Set the 3-minute lock after a successful request
         cache.set(cache_key, True, timeout=180)
 

@@ -22,6 +22,12 @@ def logout(request):
         token = RefreshToken(refresh_token)
         token.blacklist()
 
+        # Log out the specific FCM device if device_id is provided
+        device_id = request.data.get('device_id')
+        if device_id:
+            from sevy_app.models.fcm_user import FCMUser
+            FCMUser.objects.filter(device_id=device_id).update(is_loggedin=False)
+
         return Response({
             "code": 200,
             "status": True,

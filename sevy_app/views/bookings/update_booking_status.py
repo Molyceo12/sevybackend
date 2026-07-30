@@ -54,6 +54,14 @@ def update_booking_status(request):
             if company:
                 company.total_bookings = (company.total_bookings or 0) + 1
                 company.save()
+                
+                if company.company_id and company.company_id.email:
+                    from sevy_app.utils.email_service import send_notification_email
+                    send_notification_email(
+                        to_email=company.company_id.email,
+                        subject="Booking Confirmed!",
+                        message=f"The rental booking for your {booking.car.brand} {booking.car.name} has been confirmed.",
+                    )
         
         if new_status == 'cancelled':
             Notification.objects.create(
@@ -76,6 +84,22 @@ def update_booking_status(request):
                     notification_type="booking_cancelled",
                     related_id=booking.booking_id
                 )
+                
+                if hasattr(company_user, 'email'):
+                    from sevy_app.utils.email_service import send_notification_email
+                    company_name = company_user.user_info.full_names if hasattr(company_user, 'user_info') else 'Partner'
+                    send_notification_email(
+                        to_email=company_user.email,
+                        subject="Booking Cancelled",
+                        name=company_name,
+                        message=f"Unfortunately, the rental booking for your {booking.car.brand} {booking.car.name} has been cancelled.",
+                        details={
+                            "Booking ID": booking.booking_number if hasattr(booking, 'booking_number') else booking.booking_id,
+                            "Status": "Cancelled"
+                        },
+                        action_text="View Dashboard",
+                        action_url="https://sevymobility.com/dashboard"
+                    )
                 
             # Notify admins
             notify_admins(
@@ -105,6 +129,36 @@ def update_booking_status(request):
                 notification_type="rental",
                 related_id=booking.booking_id
             )
+            
+            # Send Email to Company
+            if company_user and hasattr(company_user, 'email'):
+                from sevy_app.utils.email_service import send_notification_email
+                company_name = company_user.user_info.full_names if hasattr(company_user, 'user_info') else 'Partner'
+                send_notification_email(
+                    to_email=company_user.email,
+                    subject="Car Rental Booking Completed",
+                    name=company_name,
+                    message=f"The rental booking for your {booking.car.brand} {booking.car.name} has now been marked as completed. The payment will be available in your balance shortly.",
+                    details={
+                        "Booking ID": booking.booking_number if hasattr(booking, 'booking_number') else booking.booking_id,
+                        "Status": "Completed"
+                    },
+                    action_text="View Dashboard",
+                    action_url="https://sevymobility.com"
+                )
+                
+            # Email Customer
+            if booking.user and booking.user.email:
+                from sevy_app.utils.email_service import send_notification_email
+                customer_name = booking.user.user_info.full_names if hasattr(booking.user, 'user_info') else 'Customer'
+                send_notification_email(
+                    to_email=booking.user.email,
+                    subject="Booking Completed",
+                    name=customer_name,
+                    message=f"Thank you for choosing Sevy Mobility! Your booking {booking.booking_number if hasattr(booking, 'booking_number') else booking.booking_id} has been successfully completed.",
+                    action_text="Book Again",
+                    action_url="https://sevymobility.com/rentals"
+                )
         
         return Response({
             "status": "success",

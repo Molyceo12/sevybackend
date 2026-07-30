@@ -82,7 +82,7 @@ def assign_driver(request):
                 # Create Driver Transaction
                 Transaction.objects.create(
                     user=driver.userid,
-                    reference_number=f"{customer_transaction.reference_number}_drv" if customer_transaction.reference_number else None,
+                    reference_number=f"{customer_transaction.reference_number}_drv_{driver.userid.custom_id}" if customer_transaction.reference_number else None,
                     transaction_type='cartripbooking',
                     related_id=trip_id,
                     amount=driver_net,

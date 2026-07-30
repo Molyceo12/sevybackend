@@ -38,6 +38,18 @@ def update_company_documents(request, company_id):
             related_id=company.company_id.custom_id if hasattr(company.company_id, 'custom_id') else str(company.company_id)
         )
         
+        if company.company_id and company.company_id.email:
+            from sevy_app.utils.email_service import send_notification_email
+            company_name = company.company_id.user_info.full_names if hasattr(company.company_id, 'user_info') else 'Partner'
+            send_notification_email(
+                to_email=company.company_id.email,
+                subject="Documents Successfully Uploaded",
+                name=company_name,
+                message="We have successfully received your updated documents. They are now pending admin review.",
+                action_text="View Profile",
+                action_url="https://sevymobility.com/dashboard/profile"
+            )
+        
         return Response({
             "message": "Documents updated successfully. Awaiting admin review."
         }, status=status.HTTP_200_OK)

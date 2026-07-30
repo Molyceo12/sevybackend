@@ -49,8 +49,8 @@ def trip_timeout_task(trip_id, expected_status='waiting'):
             Trip.objects.filter(pk=trip.pk).update(created_at=now)
             print(f"Re-assigned trip {trip_id} to new driver {new_driver.full_name}")
             
-            # Schedule a new 2-minute timeout for the new driver
-            trip_timeout_task.apply_async((trip.trip_id, 'waiting'), countdown=120)
+            # Schedule a new 8-minute timeout for the new driver
+            trip_timeout_task.apply_async((trip.trip_id, 'waiting'), countdown=480)
         else:
             print(f"No new driver available for trip {trip_id}. Trip remains or can be cancelled.")
                 
@@ -136,8 +136,8 @@ def booking_timeout_task(booking_id):
             CarBooking.objects.filter(pk=booking.pk).update(created_at=now)
             print(f"Re-assigned booking {booking_id} to new driver {new_driver.full_name}")
             
-            # Schedule a new 2-minute timeout for the new driver
-            booking_timeout_task.apply_async((booking.booking_id,), countdown=120)
+            # Schedule a new 8-minute timeout for the new driver
+            booking_timeout_task.apply_async((booking.booking_id,), countdown=480)
         else:
             booking.status = 'cancelled'
             booking.driver_status = None

@@ -88,7 +88,7 @@ def update_trip_status(request):
                     booking.created_at = timezone.now()
                     
                     try:
-                        booking_timeout_task.apply_async((booking.booking_id,), countdown=120)
+                        booking_timeout_task.apply_async((booking.booking_id,), countdown=480)
                     except Exception as celery_err:
                         print(f"Failed to schedule celery task: {celery_err}")
                         
@@ -151,13 +151,13 @@ def update_trip_status(request):
             driver.save()
             trip.created_at = timezone.now()
             
-            # Start the 3-minute (180 seconds) countdown for the driver to start driving
+            # Start the 10-minute (600 seconds) countdown for the driver to start driving
             from sevy_app.tasks import trip_timeout_task
             try:
                 print(f"\n:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::")
-                print(f"Driver {driver.full_name} accepted Trip {trip.trip_id}. Starting 3-minute 'ready' countdown.")
+                print(f"Driver {driver.full_name} accepted Trip {trip.trip_id}. Starting 10-minute 'ready' countdown.")
                 print(f":::::::::::::::::::::::::::::::\n")
-                trip_timeout_task.apply_async((trip.trip_id, 'ready'), countdown=180)
+                trip_timeout_task.apply_async((trip.trip_id, 'ready'), countdown=600)
             except Exception as celery_err:
                 print(f"Failed to schedule 3-minute celery task: {celery_err}")
                 
@@ -178,7 +178,7 @@ def update_trip_status(request):
                 trip.created_at = timezone.now()
                 
                 try:
-                    trip_timeout_task.apply_async((trip.trip_id, 'waiting'), countdown=120)
+                    trip_timeout_task.apply_async((trip.trip_id, 'waiting'), countdown=480)
                 except Exception as celery_err:
                     print(f"Failed to schedule celery task: {celery_err}")
                     

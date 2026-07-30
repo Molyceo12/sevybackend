@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }}</title>
+    <style>
+        body {
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            background-color: #f4f7f6;
+            margin: 0;
+            padding: 0;
+            color: #333333;
+        }
+        .container {
+            max-width: 600px;
+            margin: 40px auto;
+            background-color: #ffffff;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+        .header {
+            background-color: #1B6A56;
+            padding: 30px;
+            text-align: center;
+        }
+        .header img {
+            max-width: 150px;
+            height: auto;
+        }
+        .content {
+            padding: 40px 30px;
+        }
+        .title {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            color: #1B6A56;
+        }
+        .message {
+            font-size: 16px;
+            line-height: 1.6;
+            margin-bottom: 30px;
+        }
+        .button-container {
+            text-align: center;
+            margin: 30px 0;
+        }
+        .button {
+            background-color: #1B6A56;
+            color: #ffffff !important;
+            text-decoration: none;
+            padding: 14px 28px;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: bold;
+            display: inline-block;
+        }
+        .footer {
+            background-color: #f9f9f9;
+            padding: 20px;
+            text-align: center;
+            font-size: 12px;
+            color: #999999;
+            border-top: 1px solid #eeeeee;
+        }
+        .details-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 30px;
+        }
+        .details-table th, .details-table td {
+            padding: 12px;
+            border-bottom: 1px solid #eeeeee;
+            text-align: left;
+        }
+        .details-table th {
+            width: 40%;
+            color: #666666;
+            font-weight: normal;
+        }
+        .details-table td {
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <!-- Uses CID for inline logo if provided -->
+            <img src="cid:sevy_logo" alt="Sevy Mobility">
+        </div>
+        <div class="content">
+            <div class="title">{{ title }}</div>
+            <div class="message">
+                Hello {{ name }},
+                <br><br>
+                {{ message|safe }}
+            </div>
+            
+            {% if details %}
+            <table class="details-table">
+                {% for key, value in details.items %}
+                <tr>
+                    <th>{{ key }}</th>
+                    <td>{{ value }}</td>
+                </tr>
+                {% endfor %}
+            </table>
+            {% endif %}
+
+            {% if action_url and action_text %}
+            <div class="button-container">
+                <a href="{{ action_url }}" class="button">{{ action_text }}</a>
+            </div>
+            {% endif %}
+
+            <div class="message" style="margin-top: 40px; margin-bottom: 0;">
+                Best regards,<br>
+                <strong>The Sevy Mobility Team</strong>
+            </div>
+        </div>
+        <div class="footer">
+            &copy; {% now "Y" %} Sevy Mobility. All rights reserved.<br>
+            If you have any questions, please contact our support team.
+        </div>
+    </div>
+</body>
+</html>

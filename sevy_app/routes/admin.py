@@ -1,7 +1,9 @@
 from django.urls import path
 from sevy_app.views.admin import get_companies, get_users, get_drivers, get_revenue, get_requests, get_company_requests, get_company_transactions, admin_profile, get_driver_requests, get_driver_transactions, get_admin_dashboard, approve_transaction, reject_transaction, review_driver_request, get_platform_finance, manage_system_config
+from sevy_app.views.admin.get_user_context import get_user_context
 
 urlpatterns = [
+    path('context-data/', get_user_context, name='admin_get_user_context'),
     path('dashboard/', get_admin_dashboard, name='admin_dashboard'),
     path('profile/', admin_profile, name='admin_profile'),
     path('companies/', get_companies, name='admin_get_companies'),
