@@ -21,6 +21,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Load environment variables
 load_dotenv(BASE_DIR / '.env')
 
+RESEND_API_KEY = os.environ.get('RESEND_API_KEY')
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
@@ -102,9 +103,13 @@ WSGI_APPLICATION = 'sevy.wsgi.application'
 
 import sys
 
+ENV = os.environ.get('ENV', 'test')
+db_env_var = 'DATABASE_PROD_URL' if ENV == 'prod' else 'DATABASE_URL'
+
 DATABASES = {
     'default': dj_database_url.config(
-        default=os.environ.get('DATABASE_URL', f"sqlite:///{BASE_DIR / 'db.sqlite3'}")
+        env=db_env_var,
+        default=os.environ.get(db_env_var, f"sqlite:///{BASE_DIR / 'db.sqlite3'}")
     )
 }
 

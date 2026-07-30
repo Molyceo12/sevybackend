@@ -106,10 +106,12 @@ def get_driver_transactions(request):
                                 "return_date": str(booking.end_date) if booking.end_date else None,
                                 "total_price": float(booking.total_price) if booking.total_price else 0.0,
                                 "car_name": f"{booking.car.brand} {booking.car.name}" if booking.car else "Unknown",
-                                "car_image": booking.car.images[0] if isinstance(booking.car.images, list) and len(booking.car.images) > 0 else (booking.car.images if isinstance(booking.car.images, str) else None)
+                                "car_image": booking.car.images[0] if isinstance(booking.car.images, list) and len(booking.car.images) > 0 else (booking.car.images if isinstance(booking.car.images, str) else None),
+                                "customer_approval_status": booking.customer_approval_status,
+                                "driver_customer_approval": booking.driver_customer_approval
                             })
             
-            if not booking_data:
+            if not booking_data and t.transaction_type != 'withdrawal':
                 continue
 
             transaction_dict = {
@@ -133,22 +135,48 @@ def get_driver_transactions(request):
                 
             transaction_list.append(transaction_dict)
 
-        def priority_score(tx):
+        # Sort everything by date descending first (newest first)
+        transaction_list.sort(key=lambda x: str(x.get('created_at') or ''), reverse=True)
+        
+        withdrawals = []
+        pending_ready = []
+        pending_waiting = []
+        completed = []
+        
+        for tx in transaction_list:
+            tx_status = str(tx.get('status', '')).lower()
+            tx_type = str(tx.get('transaction_type', '')).lower()
+            
+            is_tx_finished = tx_status in ['completed', 'success', 'paid', 'approved', 'cancelled', 'canceled', 'rejected']
             item_status = ''
             if tx.get('trip') and len(tx['trip']) > 0:
                 item_status = str(tx['trip'][0].get('status', '')).lower()
             elif tx.get('booking') and len(tx['booking']) > 0:
                 item_status = str(tx['booking'][0].get('status', '')).lower()
                 
-            is_completed_item = item_status in ['completed', 'paid', 'confirmed']
+            is_item_cancelled = item_status in ['cancelled', 'canceled', 'rejected']
+            is_item_ready = item_status in ['completed', 'paid', 'confirmed']
             
-            if is_completed_item:
-                return 0
-            return 1
-
-        # Sort by date descending first, then by priority score ascending (stable sort)
-        transaction_list.sort(key=lambda x: str(x.get('created_at') or ''), reverse=True)
-        transaction_list.sort(key=priority_score)
+            is_completed_tab = is_tx_finished or is_item_cancelled
+            
+            if tx_type == 'withdrawal':
+                withdrawals.append(tx)
+            elif not is_completed_tab:
+                if is_item_ready:
+                    pending_ready.append(tx)
+                else:
+                    pending_waiting.append(tx)
+            else:
+                completed.append(tx)
+                
+        # Withdrawals and Pending should be oldest first.
+        # Since they are currently newest first (from the initial sort), we reverse them.
+        withdrawals.reverse()
+        pending_ready.reverse()
+        pending_waiting.reverse()
+        
+        # Combine lists in priority order: Withdrawals -> Ready for Approval -> Waiting -> Completed
+        transaction_list = withdrawals + pending_ready + pending_waiting + completed
 
         return Response({
             "code": 200,

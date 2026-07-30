@@ -23,10 +23,41 @@ def review_driver_request(request):
             
         driver = Driver.objects.get(userid__custom_id=driver_id)
         
+        from sevy_app.utils.email_service import send_notification_email
+
         if approved:
             driver.is_approved = True
             driver.is_cancelled = False
             driver.save()
+            
+            send_notification_email(
+                to_email=driver.userid.email,
+                subject="Your Account is Approved!",
+                name=driver.userid.user_info.full_names if hasattr(driver.userid, 'user_info') else 'Driver',
+                message="Great news! Your account has been reviewed and approved. You can now log into the Sevy app and start accepting trips.",
+                action_text="Open App",
+                action_url="https://sevymobility.com"
+            )
+            
+            from sevy_app.models import Notification
+            from sevy_app.utils.fcm_service import send_fcm_notification
+            
+            title = "Account Approved"
+            msg = "Great news! Your account has been reviewed and approved. You can now start accepting trips."
+            Notification.objects.create(
+                user=driver.userid,
+                title=title,
+                message=msg,
+                notification_type='driversystem',
+                related_id=driver_id
+            )
+            send_fcm_notification(
+                user=driver.userid,
+                title=title,
+                body=msg,
+                data={"type": "driversystem", "driver_id": driver_id}
+            )
+            
             return Response({
                 "code": 200,
                 "status": True,
@@ -38,6 +69,35 @@ def review_driver_request(request):
             driver.is_cancelled = True
             driver.cancellation_reason = reason
             driver.save()
+            
+            send_notification_email(
+                to_email=driver.userid.email,
+                subject="Update on your Sevy Mobility Application",
+                name=driver.userid.user_info.full_names if hasattr(driver.userid, 'user_info') else 'Driver',
+                message=f"We have reviewed your application. Unfortunately, we cannot approve your account at this time.<br><br>Reason: {reason}",
+                action_text="Contact Support",
+                action_url="mailto:support@sevymobility.com"
+            )
+            
+            from sevy_app.models import Notification
+            from sevy_app.utils.fcm_service import send_fcm_notification
+            
+            title = "Account Application Update"
+            msg = f"Your application was reviewed and could not be approved at this time. Reason: {reason}"
+            Notification.objects.create(
+                user=driver.userid,
+                title=title,
+                message=msg,
+                notification_type='driversystem',
+                related_id=driver_id
+            )
+            send_fcm_notification(
+                user=driver.userid,
+                title=title,
+                body=msg,
+                data={"type": "driversystem", "driver_id": driver_id}
+            )
+            
             return Response({
                 "code": 200,
                 "status": True,

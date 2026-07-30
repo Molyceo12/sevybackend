@@ -6,6 +6,14 @@ import sys
 
 def main():
     """Run administrative tasks."""
+    if 'runserver' in sys.argv:
+        if 'prod' in sys.argv:
+            os.environ['ENV'] = 'prod'
+            sys.argv.remove('prod')
+        elif 'test' in sys.argv:
+            os.environ['ENV'] = 'test'
+            sys.argv.remove('test')
+
     os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'sevy.settings')
     try:
         from django.core.management import execute_from_command_line

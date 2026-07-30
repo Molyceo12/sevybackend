@@ -87,6 +87,7 @@ def recover_pending_trips(sender, **kwargs):
             except Exception as e:
                 print(f"Failed to recover Trip Completion {trip.trip_id}: {e}")
 
+
         print("=========================================================\n")
     except Exception as e:
         print(f"Error during Celery startup recovery: {e}")

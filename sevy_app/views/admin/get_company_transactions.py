@@ -17,7 +17,7 @@ def get_company_transactions(request):
         booking_ids = [t.related_id for t in transactions if t.transaction_type == 'carbooking' and t.related_id]
         bookings_map = {}
         if booking_ids:
-            bookings = CarBooking.objects.filter(booking_id__in=booking_ids).select_related('car')
+            bookings = CarBooking.objects.filter(booking_id__in=booking_ids).select_related('car', 'user', 'user__user_info')
             for b in bookings:
                 bookings_map[b.booking_id] = b
                 
@@ -55,11 +55,17 @@ def get_company_transactions(request):
                         "pickup_location": booking.pickup_location,
                         "dropoff_location": booking.dropoff_location,
                         "car_name": f"{booking.car.brand} {booking.car.name}" if booking.car else "Unknown",
-                        "car_image": booking.car.images[0] if booking.car and booking.car.images else None
+                        "car_image": booking.car.images[0] if booking.car and booking.car.images else None,
+                        "client_name": booking.user.user_info.full_names if booking.user and hasattr(booking.user, 'user_info') else (booking.user.username if booking.user else 'Client'),
+                        "admin_company_approval": booking.admin_company_approval,
+                        "admin_driver_approval": booking.admin_driver_approval,
+                        "customer_approval_status": booking.customer_approval_status,
+                        "company_customer_approval": booking.company_customer_approval
                     })
             
             transaction_list.append({
                 "transaction_id": t.transaction_id,
+                "tracking_number": t.tracking_number,
                 "transaction_type": t.transaction_type,
                 "amount": float(t.amount) if t.amount else 0.00,
                 "currency": t.currency,
@@ -73,6 +79,13 @@ def get_company_transactions(request):
                 "booking": booking_data
             })
             
+        # 1. Withdrawals first, then everything else
+        # 2. Ordered by oldest first (created_at ascending)
+        transaction_list.sort(key=lambda x: (
+            0 if x['transaction_type'] == 'withdrawal' else 1,
+            x['created_at'] if x['created_at'] else ''
+        ))
+        
         return Response({
             "code": 200,
             "status": True,

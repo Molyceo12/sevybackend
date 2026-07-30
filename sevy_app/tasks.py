@@ -30,8 +30,23 @@ def trip_timeout_task(trip_id, expected_status='waiting'):
                 user=current_driver.userid,
                 title="Trip Missed",
                 message=f"You missed a trip request from {trip.start_place_name} to {trip.destination_name} because you did not respond in time. It has been reassigned.",
-                notification_type='trip',
+                notification_type='drivertrip',
                 related_id=trip.trip_id
+            )
+            
+            from sevy_app.utils.fcm_service import send_fcm_notification
+            send_fcm_notification(
+                user=current_driver.userid,
+                title="Trip Missed",
+                body=f"You missed a trip request from {trip.start_place_name} to {trip.destination_name} because you did not respond in time.",
+                data={"type": "drivertripmissed", "trip_id": str(trip.trip_id)}
+            )
+            
+            send_fcm_notification(
+                user=trip.userid,
+                title="Driver Timeout",
+                body="Driver did not respond in time. We are looking for another driver for you.",
+                data={"type": "trip", "trip_id": str(trip.trip_id)}
             )
         
         # MOCK: Always assign this specific test driver to match the API
@@ -49,8 +64,35 @@ def trip_timeout_task(trip_id, expected_status='waiting'):
             Trip.objects.filter(pk=trip.pk).update(created_at=now)
             print(f"Re-assigned trip {trip_id} to new driver {new_driver.full_name}")
             
-            # Schedule a new 2-minute timeout for the new driver
-            trip_timeout_task.apply_async((trip.trip_id, 'waiting'), countdown=120)
+            from sevy_app.models import Notification
+            from sevy_app.utils.fcm_service import send_fcm_notification
+            
+            # Notify new driver
+            Notification.objects.create(
+                user=new_driver.userid,
+                title="New Trip Request",
+                message=f"You have a new trip request from {trip.start_place_name} to {trip.destination_name}.",
+                notification_type='drivertrip',
+                related_id=trip.trip_id
+            )
+            
+            send_fcm_notification(
+                user=new_driver.userid,
+                title="New Trip Request",
+                body=f"You have a new trip request from {trip.start_place_name} to {trip.destination_name}.",
+                data={"type": "trip", "trip_id": str(trip.trip_id)}
+            )
+            
+            # Notify customer of successful reassignment
+            send_fcm_notification(
+                user=trip.userid,
+                title="Trip Reassigned",
+                body=f"Good news! Your trip has been reassigned to a new driver: {new_driver.full_name}.",
+                data={"type": "trip", "trip_id": str(trip.trip_id)}
+            )
+            
+            # Schedule a new 8-minute timeout for the new driver
+            trip_timeout_task.apply_async((trip.trip_id, 'waiting'), countdown=480)
         else:
             print(f"No new driver available for trip {trip_id}. Trip remains or can be cancelled.")
                 
@@ -101,8 +143,18 @@ def booking_timeout_task(booking_id):
                 user=booking.driver.userid,
                 title="Booking Missed",
                 message=f"You missed a car rental booking request because you did not respond in time.",
-                notification_type='rental',
+                notification_type='driverbooking',
                 related_id=booking.booking_id
+            )
+            
+            from sevy_app.utils.fcm_service import send_fcm_notification
+            car_image = booking.car.images[0] if booking.car and booking.car.images else None
+            send_fcm_notification(
+                user=booking.user,
+                title="Booking Driver Timeout",
+                body="Your assigned driver did not respond in time. We have assigned another driver to you.",
+                data={"type": "rental", "booking_id": str(booking.booking_id)},
+                image=car_image
             )
             
             # Notify the company
@@ -115,8 +167,15 @@ def booking_timeout_task(booking_id):
                     user=company_user,
                     title="Driver Missed Booking",
                     message=f"Driver {booking.driver.full_name} failed to respond to the assignment for your {booking.car.brand} {booking.car.name}. We are reassigning a new driver.",
-                    notification_type="rental",
+                    notification_type="companybooking",
                     related_id=booking.booking_id
+                )
+                send_fcm_notification(
+                    user=company_user,
+                    title="Driver Missed Booking",
+                    body=f"Driver {booking.driver.full_name} failed to respond to the assignment. We are reassigning a new driver.",
+                    data={"type": "companybooking", "booking_id": str(booking.booking_id)},
+                    image=car_image
                 )
             
         # MOCK: Always assign this specific test driver to match the API
@@ -136,8 +195,8 @@ def booking_timeout_task(booking_id):
             CarBooking.objects.filter(pk=booking.pk).update(created_at=now)
             print(f"Re-assigned booking {booking_id} to new driver {new_driver.full_name}")
             
-            # Schedule a new 2-minute timeout for the new driver
-            booking_timeout_task.apply_async((booking.booking_id,), countdown=120)
+            # Schedule a new 8-minute timeout for the new driver
+            booking_timeout_task.apply_async((booking.booking_id,), countdown=480)
         else:
             booking.status = 'cancelled'
             booking.driver_status = None
@@ -167,7 +226,7 @@ def complete_booking_task(booking_id):
                     user=booking.driver.userid,
                     title="Rental Completed",
                     message="Your car rental booking has ended. You are now available for new requests.",
-                    notification_type='rental',
+                    notification_type='driverbooking',
                     related_id=booking.booking_id
                 )
                 
@@ -177,13 +236,7 @@ def complete_booking_task(booking_id):
                 
             booking.save()
             
-            # Notify admins of completion
-            notify_admins(
-                title="Rental Booking Completed",
-                message=f"Rental booking {booking.booking_id} has automatically completed as scheduled.",
-                notification_type="rental",
-                related_id=booking.booking_id
-            )
+
             
             # Notify the company
             company_user = getattr(booking.companyid, 'company_id', None) if booking.companyid else None
@@ -198,6 +251,14 @@ def complete_booking_task(booking_id):
                     notification_type="rental",
                     related_id=booking.booking_id
                 )
+                
+            # Notify Admins
+            notify_admins(
+                title="Booking Completion Request",
+                message=f"A completion request for booking {getattr(booking, 'booking_number', None) or booking.booking_id} requires your review and approval. (Auto-completed by system)",
+                notification_type="transaction",
+                related_id=booking.booking_id
+            )
                 
             print(f"Automatically completed booking {booking_id} at its end_date.")
             
@@ -218,11 +279,138 @@ def auto_accept_trip_completion_task(trip_id):
                 Notification.objects.create(
                     user=trip.driverid.userid,
                     title="Trip Confirmed Automatically",
-                    message=f"The customer did not respond within 24 hours, so the completion of trip {trip.tracking_number or trip.trip_id} was automatically accepted.",
-                    notification_type='trip_approval',
+                    message=f"The completion of trip {trip.tracking_number or trip.trip_id} was automatically accepted.",
+                    notification_type='drivertrip',
                     related_id=trip.trip_id
                 )
+                
+                from sevy_app.utils.fcm_service import send_fcm_notification
+                send_fcm_notification(
+                    user=trip.driverid.userid,
+                    title="Trip Confirmed Automatically",
+                    body=f"The completion of trip {trip.tracking_number or trip.trip_id} was automatically accepted.",
+                    data={"type": "drivertrip", "trip_id": str(trip.trip_id)}
+                )
+                
+            # Notify Admins
+            from sevy_app.utils.notifications import notify_admins
+            tx_type = "company_transaction" if (trip.driverid and trip.driverid.companyid) else "driver_transaction"
+            try:
+                notify_admins(
+                    title="Trip Completion Request",
+                    message=f"A completion request for trip {trip.tracking_number or trip.trip_id} requires your review and approval. (Auto-accepted by system)",
+                    notification_type=tx_type,
+                    related_id=trip.trip_id
+                )
+            except Exception as e:
+                print(f"\\n::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::")
+                print(f"Auto Trip Completion Notification Error:\\n{str(e)}")
+                print(f"::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::\\n")
                 
             print(f"Automatically accepted completion request for trip {trip_id}")
     except Trip.DoesNotExist:
         pass
+
+@shared_task
+def auto_approve_booking_completion_task(booking_id):
+    from sevy_app.models import CarBooking, Notification
+    from sevy_app.utils.fcm_service import send_fcm_notification
+    from sevy_app.utils.email_service import send_notification_email
+
+    try:
+        booking = CarBooking.objects.get(booking_id=booking_id)
+        if booking.customer_approval_status == 'requestsent':
+            # Approve it
+            booking.customer_approval_status = 'approved'
+            booking.save()
+            
+            # Find the company user
+            company_user = getattr(booking.companyid, 'company_id', None) if booking.companyid else None
+            if not company_user and booking.car and booking.car.companyid:
+                company_user = getattr(booking.car.companyid, 'company_id', None)
+                
+            notification_title = "Booking Completed Automatically"
+            notification_msg = f"The completion of your booking for {booking.car.brand} {booking.car.name} was automatically accepted by the system."
+
+            # Notify Customer
+            if booking.user:
+                Notification.objects.create(
+                    user=booking.user,
+                    title=notification_title,
+                    message=notification_msg,
+                    notification_type='rental',
+                    related_id=booking.booking_id
+                )
+                
+                send_fcm_notification(
+                    user=booking.user,
+                    title=notification_title,
+                    body=notification_msg,
+                    data={"type": "rental", "booking_id": str(booking.booking_id)}
+                )
+                
+                if booking.user.email:
+                    send_notification_email(
+                        to_email=booking.user.email,
+                        subject=notification_title,
+                        name=booking.user.full_names if hasattr(booking.user, 'full_names') else "Customer",
+                        message="Your car rental booking completion has been automatically approved by the system. Thank you for using Sevy!",
+                        details=[
+                            {"label": "Booking ID", "value": booking.booking_number or booking.booking_id},
+                            {"label": "Car", "value": f"{booking.car.brand} {booking.car.name}"},
+                        ]
+                    )
+
+            # Notify Company
+            if company_user:
+                Notification.objects.create(
+                    user=company_user,
+                    title=notification_title,
+                    message=f"The completion of the booking for your {booking.car.brand} {booking.car.name} was automatically accepted.",
+                    notification_type='companybooking',
+                    related_id=booking.booking_id
+                )
+                
+                send_fcm_notification(
+                    user=company_user,
+                    title=notification_title,
+                    body=f"The completion of the booking for your {booking.car.brand} {booking.car.name} was automatically accepted.",
+                    data={"type": "companybooking", "booking_id": str(booking.booking_id)}
+                )
+                
+                if company_user.email:
+                    send_notification_email(
+                        to_email=company_user.email,
+                        subject=notification_title,
+                        name=company_user.full_names if hasattr(company_user, 'full_names') else "Company",
+                        message="A customer's car rental booking completion has been automatically approved by the system.",
+                        details=[
+                            {"label": "Booking ID", "value": booking.booking_number or booking.booking_id},
+                            {"label": "Car", "value": f"{booking.car.brand} {booking.car.name}"},
+                        ]
+                    )
+                
+            print(f"Automatically accepted completion request for booking {booking_id}")
+    except CarBooking.DoesNotExist:
+        pass
+
+@shared_task
+def send_fcm_notification_task(user_id, title, body, data=None, image=None):
+    from django.contrib.auth import get_user_model
+    User = get_user_model()
+    try:
+        user = User.objects.get(id=user_id)
+        from sevy_app.utils.fcm_service import _execute_send_fcm_notification
+        _execute_send_fcm_notification(user, title, body, data, image)
+    except User.DoesNotExist:
+        pass
+    except Exception as e:
+        print(f"Error in send_fcm_notification_task: {str(e)}")
+
+@shared_task
+def send_email_task(to_email, subject, template_name, context_data):
+    try:
+        from sevy_app.utils.email_service import _execute_send_customer_email
+        _execute_send_customer_email(to_email, subject, template_name, context_data)
+    except Exception as e:
+        print(f"Error in send_email_task: {str(e)}")

@@ -30,6 +30,38 @@ def review_company(request):
             company.is_verified = True
             company.is_cancelled = False
             company.save()
+            company.save()
+            
+            if company.company_id and company.company_id.email:
+                from sevy_app.utils.email_service import send_notification_email
+                company_name = company.company_id.user_info.full_names if hasattr(company.company_id, 'user_info') else 'Partner'
+                send_notification_email(
+                    to_email=company.company_id.email,
+                    subject="Your Company Account is Approved!",
+                    name=company_name,
+                    message="Great news! Your company registration has been reviewed and approved. You can now manage your fleet.",
+                    action_text="Log In",
+                    action_url="https://sevymobility.com"
+                )
+                
+            from sevy_app.models import Notification
+            from sevy_app.utils.fcm_service import send_fcm_notification
+            
+            title = "Company Account Approved"
+            msg = "Great news! Your company registration has been reviewed and approved."
+            Notification.objects.create(
+                user=company.company_id,
+                title=title,
+                message=msg,
+                notification_type='companysystem',
+                related_id=company.company_id_id
+            )
+            send_fcm_notification(
+                user=company.company_id,
+                title=title,
+                body=msg,
+                data={"type": "companysystem", "company_id": str(company.company_id_id)}
+            )
             return Response({
                 "status": True, 
                 "message": "Company approved successfully.", 
@@ -41,6 +73,38 @@ def review_company(request):
             company.is_cancelled = True
             company.cancellation_reason = reason
             company.save()
+            company.save()
+            
+            if company.company_id and company.company_id.email:
+                from sevy_app.utils.email_service import send_notification_email
+                company_name = company.company_id.user_info.full_names if hasattr(company.company_id, 'user_info') else 'Partner'
+                send_notification_email(
+                    to_email=company.company_id.email,
+                    subject="Update on your Company Registration",
+                    name=company_name,
+                    message=f"We have reviewed your registration. Unfortunately, it was rejected.<br><br>Reason: {reason}",
+                    action_text="Contact Support",
+                    action_url="mailto:support@sevymobility.com"
+                )
+                
+            from sevy_app.models import Notification
+            from sevy_app.utils.fcm_service import send_fcm_notification
+            
+            title = "Company Registration Update"
+            msg = f"Your application was reviewed and rejected. Reason: {reason}"
+            Notification.objects.create(
+                user=company.company_id,
+                title=title,
+                message=msg,
+                notification_type='companysystem',
+                related_id=company.company_id_id
+            )
+            send_fcm_notification(
+                user=company.company_id,
+                title=title,
+                body=msg,
+                data={"type": "companysystem", "company_id": str(company.company_id_id)}
+            )
             return Response({
                 "status": True, 
                 "message": "Company cancelled successfully.", 

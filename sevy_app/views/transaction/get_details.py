@@ -51,7 +51,10 @@ def get_transaction_details(request):
         booking_number = None
         trip_number = None
         
-        admin_approval_status = 'waiting'
+        admin_company_approval = 'none'
+        admin_driver_approval = 'none'
+
+
         company_payout = float(transaction.amount or 0.0)
 
         # Check CarBooking lookup
@@ -65,7 +68,8 @@ def get_transaction_details(request):
 
         if booking:
             booking_number = booking.booking_number
-            admin_approval_status = booking.admin_approval_status
+            admin_company_approval = booking.admin_company_approval
+            admin_driver_approval = booking.admin_driver_approval
             service_type = booking.booking_type
             if booking.user:
                 try:
@@ -122,6 +126,11 @@ def get_transaction_details(request):
                     driver_name = trip.driverid.full_name
                     if trip.service_type != 'driver_only':
                         driver_car = trip.driverid.vehicle_make_color
+                if trip.userid:
+                    try:
+                        customer_name = trip.userid.user_info.full_names
+                    except Exception:
+                        customer_name = trip.userid.custom_id
                 distance = f"{trip.trip_distance_km} km" if trip.trip_distance_km else "Unknown"
                 
                 config = SystemConfig.objects.first()
@@ -144,7 +153,8 @@ def get_transaction_details(request):
                 service_fee = round(choose_driver_fee + platform_fee, 2)
                 trip_fare = round(total_amount - service_fee, 2)
 
-        admin_status_val = admin_approval_status if ('admin_approval_status' in locals() and admin_approval_status) else 'waiting'
+        admin_company_approval_val = admin_company_approval if 'admin_company_approval' in locals() else 'none'
+        admin_driver_approval_val = admin_driver_approval if 'admin_driver_approval' in locals() else 'none'
         company_payout_val = company_payout if 'company_payout' in locals() else float(transaction.amount or 0.0)
 
         body = {
@@ -160,7 +170,8 @@ def get_transaction_details(request):
             "currency": transaction.currency,
             "payment_method": transaction.payment_method,
             "status": transaction.status,
-            "admin_approval_status": admin_status_val,
+            "admin_company_approval": admin_company_approval_val,
+            "admin_driver_approval": admin_driver_approval_val,
             "company_payout": company_payout_val,
             "description": transaction.description,
             "completed_at": transaction.completed_at,

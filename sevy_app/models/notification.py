@@ -18,7 +18,7 @@ class Notification(models.Model):
     
     title = models.CharField(max_length=255)
     message = models.TextField()
-    notification_type = models.CharField(max_length=20, choices=NOTIFICATION_TYPES, default='system')
+    notification_type = models.CharField(max_length=50, choices=NOTIFICATION_TYPES, default='system')
     
     # Generic linking to Trip, Booking, or Transaction IDs
     related_id = models.CharField(max_length=24, null=True, blank=True)

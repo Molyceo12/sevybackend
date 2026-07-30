@@ -1,0 +1,16 @@
+{% extends "emails/base.html" %}
+
+{% block content %}
+<h1>Welcome to Sevy Mobility! 🚗</h1>
+<p>Hi {{ name }},</p>
+<p>We're absolutely thrilled to have you on board! Your account has been successfully created.</p>
+<p>With Sevy Mobility, you can seamlessly book rides and rent cars, all from the palm of your hand.</p>
+<p>Here are a few things you can do next:</p>
+<ul>
+    <li>Explore available cars for rent</li>
+    <li>Request a ride to your favorite destination</li>
+    <li>Complete your profile</li>
+</ul>
+<a href="https://sevymobility.com" class="btn" style="color: white;">Get Started</a>
+<p style="margin-top: 30px;">Best regards,<br>The Sevy Mobility Team</p>
+{% endblock %}

@@ -16,6 +16,7 @@ def withdraw(request):
     """
     company_id = request.data.get('company_id')
     amount = request.data.get('amount')
+    payment_method = request.data.get('payment_method', 'N/A')
 
     if not company_id:
         return Response({
@@ -74,21 +75,39 @@ def withdraw(request):
         
         # Create the Transaction record that requires Admin approval
         transaction = Transaction.objects.create(
-            user=company.user,
+            user=company.company_id,
             related_id=company.company_id_id,
             transaction_type='withdrawal',
             amount=amount,
             currency='RWF',
             status='waitingapproval',
-            description='Company withdrawal request'
+            description='Company withdrawal request',
+            payment_method=payment_method
         )
         
-        notify_admins(
-            title="New Withdrawal Request",
-            message=f"Company {company.user.user_info.full_names if hasattr(company.user, 'user_info') else company.user.custom_id} requested a withdrawal of {amount} RWF.",
-            notification_type="transaction",
-            related_id=transaction.transaction_id
-        )
+        try:
+            notify_admins(
+                title="Withdrawal Request",
+                message=f"Company {company.company_id.user_info.full_names if hasattr(company.company_id, 'user_info') else company.company_id.custom_id} requested a withdrawal of {amount} RWF.",
+                notification_type="company_withdrawal",
+                related_id=transaction.transaction_id
+            )
+        except Exception as e:
+            print(f"\\n::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::")
+            print(f"Company Withdrawal Notification Error:\\n{str(e)}")
+            print(f"::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::\\n")
+        
+        if company.company_id and company.company_id.email:
+            from sevy_app.utils.email_service import send_notification_email
+            company_name = company.company_id.user_info.full_names if hasattr(company.company_id, 'user_info') else 'Partner'
+            send_notification_email(
+                to_email=company.company_id.email,
+                subject="Withdrawal Request Received",
+                name=company_name,
+                message=f"We have received your withdrawal request for {amount} RWF. It is currently pending admin approval and will be processed shortly.",
+                action_text="View Dashboard",
+                action_url="https://sevymobility.com"
+            )
         
         # Set the 3-minute lock after a successful withdrawal
         cache.set(cache_key, True, timeout=180)

@@ -108,6 +108,9 @@ def get_driver_trips_and_bookings(request):
                 "total_price": float(booking.total_price) if booking.total_price else 0.0,
                 "status": booking.status,
                 "driver_status": booking.driver_status,
+                "approval_status": booking.driver_customer_approval,
+                "admin_company_approval": booking.admin_company_approval,
+                "admin_driver_approval": booking.admin_driver_approval,
                 "payment_status": booking.payment_status,
                 "created_at": booking.created_at
             })

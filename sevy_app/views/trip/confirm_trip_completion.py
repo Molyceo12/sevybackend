@@ -58,6 +58,14 @@ def confirm_trip_completion(request):
             trip.approval_status = 'denied'
             trip.save()
             
+            # Notify Admins
+            notify_admins(
+                title="Trip Reported by Customer",
+                message=f"Customer reported trip {trip.tracking_number or trip.trip_id}. It needs review.",
+                notification_type="support",
+                related_id=trip.trip_id
+            )
+            
             # Notify the driver that the customer denied it
             if trip.driverid and trip.driverid.userid:
                 from sevy_app.models import Notification
@@ -65,17 +73,29 @@ def confirm_trip_completion(request):
                     user=trip.driverid.userid,
                     title="Trip Completion Denied",
                     message=f"The customer has denied the completion request for trip {trip.tracking_number or trip.trip_id}. Support will review it.",
-                    notification_type='trip_approval',
+                    notification_type='drivertrip',
                     related_id=trip.trip_id
                 )
+                
+                from sevy_app.utils.fcm_service import send_fcm_notification
+                send_fcm_notification(
+                    user=trip.driverid.userid,
+                    title="Trip Completion Denied",
+                    body=f"The customer has denied the completion request for trip {trip.tracking_number or trip.trip_id}. Support will review it.",
+                    data={"type": "drivertrip", "trip_id": str(trip.trip_id)}
+                )
+                
+                if trip.driverid.userid.email:
+                    from sevy_app.utils.email_service import send_notification_email
+                    driver_name = trip.driverid.userid.user_info.full_names if hasattr(trip.driverid.userid, 'user_info') else 'Driver'
+                    send_notification_email(
+                        to_email=trip.driverid.userid.email,
+                        subject="Trip Completion Denied",
+                        name=driver_name,
+                        message=f"The customer has denied the completion request for trip {trip.tracking_number or trip.trip_id}. Support will review it."
+                    )
             
-            # Notify admins of the dispute
-            notify_admins(
-                title="Trip Dispute Reported",
-                message=f"Customer reported an issue and denied completion for trip {trip.tracking_number or trip.trip_id}.",
-                notification_type="system",
-                related_id=trip.trip_id
-            )
+
             
             return Response({
                 "code": 200,
@@ -96,22 +116,63 @@ def confirm_trip_completion(request):
             # Notify the driver that the customer confirmed it
             if trip.driverid and trip.driverid.userid:
                 from sevy_app.models import Notification
+                from sevy_app.utils.fcm_service import send_fcm_notification
+                
                 Notification.objects.create(
                     user=trip.driverid.userid,
                     title="Trip Confirmed",
                     message=f"The customer has confirmed the completion of the trip.",
-                    notification_type='trip_approval',
+                    notification_type='drivertrip',
                     related_id=trip.trip_id
                 )
+                
+                send_fcm_notification(
+                    user=trip.driverid.userid,
+                    title="Trip Confirmed",
+                    body="The customer has confirmed the completion of the trip.",
+                    data={"type": "drivertrip", "trip_id": str(trip.trip_id)}
+                )
+                
+                if trip.driverid.userid.email:
+                    from sevy_app.utils.email_service import send_notification_email
+                    driver_name = trip.driverid.userid.user_info.full_names if hasattr(trip.driverid.userid, 'user_info') else 'Driver'
+                    send_notification_email(
+                        to_email=trip.driverid.userid.email,
+                        subject="Trip Confirmed",
+                        name=driver_name,
+                        message=f"The customer has confirmed the completion of trip {trip.tracking_number or trip.trip_id}."
+                    )
             
-            # Notify admins of completion
-            notify_admins(
-                title="Trip Completed",
-                message=f"Trip {trip.tracking_number or trip.trip_id} was successfully completed and approved.",
-                notification_type="trip",
-                related_id=trip.trip_id
-            )
+
             
+            # Email Customer
+            if trip.userid and trip.userid.email:
+                from sevy_app.utils.email_service import send_notification_email
+                customer_name = trip.userid.user_info.full_names if hasattr(trip.userid, 'user_info') else 'Customer'
+                send_notification_email(
+                    to_email=trip.userid.email,
+                    subject="Trip Completed",
+                    name=customer_name,
+                    message=f"Thank you for riding with Sevy Mobility! Your trip {trip.tracking_number or trip.trip_id} has been marked as completed.",
+                    action_text="View Receipt",
+                    action_url="https://sevymobility.com/trips"
+                )
+                
+            # Notify Admins
+            tx_type = "company_transaction" if (trip.driverid and trip.driverid.companyid) else "driver_transaction"
+            try:
+                notify_admins(
+                    title="Trip Completion Request",
+                    message=f"A completion request for trip {trip.tracking_number or trip.trip_id} requires your review and approval.",
+                    notification_type=tx_type,
+                    related_id=trip.trip_id
+                )
+            except Exception as e:
+                print(f"\\n::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::")
+                print(f"Trip Completion Notification Error:\\n{str(e)}")
+                print(f"::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::\\n")
+            
+
             return Response({
                 "code": 200,
                 "status": True,

@@ -12,13 +12,17 @@ class TokenVerificationMiddleware(MiddlewareMixin):
     Bypasses specific open routes like login and register.
     """
     def process_request(self, request):
+        import os
+        env = os.environ.get('ENV', 'test')
+        api_prefix = f'/api/{env}/'
+
         # Open routes that don't need token verification
         open_routes = [
-            '/api/login/',
-            '/api/register/',
-            '/api/register-driver/',
-            '/api/company/register/',
-            '/api/token/refresh/',
+            f'{api_prefix}login/',
+            f'{api_prefix}register/',
+            f'{api_prefix}register-driver/',
+            f'{api_prefix}company/register/',
+            f'{api_prefix}token/refresh/',
         ]
         
         # We only verify requests that go to /api/

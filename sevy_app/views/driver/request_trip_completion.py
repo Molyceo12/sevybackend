@@ -38,11 +38,29 @@ def request_trip_completion(request):
         # Send completion request notification to the customer
         Notification.objects.create(
             user=trip.userid,
-            title="Driver Arrived / Trip Finished",
+            title="Trip Approval Request",
             message="Your driver has marked this trip as completed. Please confirm to finalize it.",
             notification_type='trip_completion',
             related_id=trip.trip_id
         )
+        
+        from sevy_app.utils.fcm_service import send_fcm_notification
+        send_fcm_notification(
+            user=trip.userid,
+            title="Trip Approval Request",
+            body="A driver has requested to complete your trip. If you don't accept within 2 hours, it will be approved automatically by the system.",
+            data={"type": "triprequest", "trip_id": str(trip.trip_id)}
+        )
+
+        if trip.userid and trip.userid.email:
+            from sevy_app.utils.email_service import send_notification_email
+            customer_name = trip.userid.user_info.full_names if hasattr(trip.userid, 'user_info') else 'Customer'
+            send_notification_email(
+                to_email=trip.userid.email,
+                subject="Action Required: Confirm Trip Completion",
+                name=customer_name,
+                message="Your driver has marked this trip as completed. Please log into the app and confirm or report this trip within the next 2 hours."
+            )
 
         # Update the trip's approval_status to 'requestsent'
         trip.approval_status = 'requestsent'

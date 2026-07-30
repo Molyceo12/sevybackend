@@ -45,9 +45,17 @@ class CarBooking(models.Model):
     )
 
     ADMIN_APPROVAL_CHOICES = (
+        ('none', 'None'),
+        ('driver', 'Driver'),
+        ('company', 'Company'),
+        ('both', 'Both'),
+    )
+
+    CUSTOMER_APPROVAL_CHOICES = (
         ('waiting', 'Waiting'),
+        ('requestsent', 'Request Sent'),
         ('approved', 'Approved'),
-        ('canceled', 'Canceled'),
+        ('cancelled', 'Cancelled'),
     )
 
     booking_id = models.CharField(max_length=50, primary_key=True, default=generate_booking_id)
@@ -63,7 +71,11 @@ class CarBooking(models.Model):
     
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
     driver_status = models.CharField(max_length=20, choices=DRIVER_STATUS_CHOICES, null=True, blank=True)
-    admin_approval_status = models.CharField(max_length=20, choices=ADMIN_APPROVAL_CHOICES, default='waiting')
+    admin_company_approval = models.CharField(max_length=20, choices=CUSTOMER_APPROVAL_CHOICES, default='waiting')
+    admin_driver_approval = models.CharField(max_length=20, choices=CUSTOMER_APPROVAL_CHOICES, default='waiting')
+    customer_approval_status = models.CharField(max_length=20, choices=CUSTOMER_APPROVAL_CHOICES, default='waiting')
+    company_customer_approval = models.CharField(max_length=20, choices=CUSTOMER_APPROVAL_CHOICES, default='waiting')
+    driver_customer_approval = models.CharField(max_length=20, choices=CUSTOMER_APPROVAL_CHOICES, null=True, blank=True)
     
     start_date = models.DateTimeField()
     end_date = models.DateTimeField()

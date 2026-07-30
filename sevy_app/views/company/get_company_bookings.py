@@ -89,8 +89,10 @@ def get_company_bookings(request):
                 
                 "status": booking.status,
                 "driver_status": booking.driver_status,
-                "admin_approval_status": booking.admin_approval_status,
+                "admin_company_approval": booking.admin_company_approval,
+                "admin_driver_approval": booking.admin_driver_approval,
                 "payment_status": booking.payment_status,
+                "customer_approval_status": booking.company_customer_approval,
                 
                 "created_at": booking.created_at,
                 "updated_at": booking.updated_at

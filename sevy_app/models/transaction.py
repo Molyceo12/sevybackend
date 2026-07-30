@@ -61,7 +61,12 @@ class Transaction(models.Model):
                     new_seq = 0
             else:
                 new_seq = 0
-            self.tracking_number = f"TRX-{new_seq:03d}-A-1"
+            while True:
+                candidate = f"TRX-{new_seq:03d}-A-1"
+                if not Transaction.objects.filter(tracking_number=candidate).exists():
+                    self.tracking_number = candidate
+                    break
+                new_seq += 1
         super().save(*args, **kwargs)
 
     def __str__(self):

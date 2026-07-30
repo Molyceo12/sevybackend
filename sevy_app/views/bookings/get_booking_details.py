@@ -122,7 +122,8 @@ def get_booking_details(request):
             "total_price": subtotal + service_fee,
             "status": booking.status,
             "driver_status": booking.driver_status,
-            "admin_approval_status": booking.admin_approval_status,
+            "admin_company_approval": booking.admin_company_approval,
+            "admin_driver_approval": booking.admin_driver_approval,
             "payment_status": booking.payment_status,
             
             "created_at": booking.created_at,

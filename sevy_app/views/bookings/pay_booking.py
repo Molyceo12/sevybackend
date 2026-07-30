@@ -191,11 +191,11 @@ def pay_booking(request):
         except Exception as celery_err:
             print(f"Failed to schedule car availability tasks: {celery_err}")
             
-        # Schedule Driver 2-minute countdown (if applicable)
+        # Schedule Driver 8-minute countdown (if applicable)
         if booking.booking_type == 'with_driver' and booking.driver:
             try:
-                booking_timeout_task.apply_async((booking.booking_id,), countdown=120)
-                print(f"Scheduled 2-minute timeout for booking {booking.booking_id} driver.")
+                booking_timeout_task.apply_async((booking.booking_id,), countdown=480)
+                print(f"Scheduled 8-minute timeout for booking {booking.booking_id} driver.")
             except Exception as celery_err:
                 print(f"Failed to schedule booking timeout task: {celery_err}")
         
@@ -204,42 +204,133 @@ def pay_booking(request):
         # Create a notification for the driver if one is attached
         if booking.driver and booking.driver.userid:
             from sevy_app.models import Notification
+            title = "New Booking Assigned!"
+            msg = "You have been assigned a new booking as a driver. Please check your app for details."
             Notification.objects.create(
                 user=booking.driver.userid,
-                title="Payment Received for Booking",
-                message=f"A payment of {amount} RWF has been received for the rental booking.",
-                notification_type='transaction',
-                related_id=customer_transaction.transaction_id
+                title=title,
+                message=msg,
+                notification_type='driverbooking',
+                related_id=booking.booking_id
             )
             
-        # Notify the customer
+        # Notify the customer (Database only, no FCM/Push as per request)
         from sevy_app.models import Notification
+        
+        title = "Payment Successful"
+        msg = f"Your payment of {amount} RWF for the car booking was successful."
         Notification.objects.create(
             user=booking.user,
-            title="Payment Successful",
-            message=f"Your payment of {amount} RWF for the car booking was successful.",
+            title=title,
+            message=msg,
             notification_type='transaction',
             related_id=customer_transaction.transaction_id
         )
         
         # Notify the company
         if company_user:
+            from sevy_app.models import Notification
+            customer_name = booking.user.user_info.full_names if hasattr(booking.user, 'user_info') else 'A customer'
+            start_date_str = booking.start_date.strftime('%b %d, %Y %H:%M') if booking.start_date else ''
+            end_date_str = booking.end_date.strftime('%b %d, %Y %H:%M') if booking.end_date else ''
+            
+            title = "New Rental Request"
+            msg = f"{customer_name} requests to rent your {booking.car.brand} {booking.car.name} from {start_date_str} to {end_date_str}."
             Notification.objects.create(
                 user=company_user,
-                title="Payment Received",
-                message=f"A payment has been successfully processed for the rental of your {booking.car.brand} {booking.car.name}.",
-                notification_type='transaction',
-                related_id=customer_transaction.transaction_id
+                title=title,
+                message=msg,
+                notification_type='companybooking',
+                related_id=booking.booking_id
             )
-        
-        # Notify admins
-        notify_admins(
-            title="Payment to Company Successful",
-            message=f"Payment for booking {getattr(booking, 'booking_number', None) or booking.booking_id} successfully made.",
-            notification_type='transaction',
-            related_id=customer_transaction.transaction_id
-        )
-        
+
+        import threading
+        def send_external_notifications():
+            try:
+                from sevy_app.utils.fcm_service import send_fcm_notification
+                from sevy_app.utils.email_service import send_notification_email
+                car_image = booking.car.images[0] if booking.car and booking.car.images else None
+
+                # Notify Driver External
+                if booking.driver and booking.driver.userid:
+                    title_driver = "New Booking Assigned!"
+                    msg_driver = "You have been assigned a new booking as a driver. Please check your app for details."
+                    send_fcm_notification(
+                        user=booking.driver.userid,
+                        title=title_driver,
+                        body=msg_driver,
+                        data={"type": "driverbooking", "booking_id": str(booking.booking_id)},
+                        image=car_image
+                    )
+                    # Driver Email
+                    if hasattr(booking.driver.userid, 'email') and booking.driver.userid.email:
+                        driver_name = booking.driver.userid.user_info.full_names if hasattr(booking.driver.userid, 'user_info') else 'Driver'
+                        send_notification_email(
+                            to_email=booking.driver.userid.email,
+                            subject="New Booking Assigned",
+                            name=driver_name,
+                            message="You have been assigned a new booking as a driver. Please prepare for the trip.",
+                            details={
+                                "Booking ID": booking.booking_number if hasattr(booking, 'booking_number') else booking.booking_id
+                            },
+                            action_text="View Dashboard",
+                            action_url="https://sevymobility.com"
+                        )
+
+                # Notify Company External
+                if company_user:
+                    customer_name_company = booking.user.user_info.full_names if hasattr(booking.user, 'user_info') else 'A customer'
+                    start_date_str_comp = booking.start_date.strftime('%b %d, %Y %H:%M') if booking.start_date else ''
+                    end_date_str_comp = booking.end_date.strftime('%b %d, %Y %H:%M') if booking.end_date else ''
+                    title_company = "New Rental Request"
+                    msg_company = f"{customer_name_company} requests to rent your {booking.car.brand} {booking.car.name} from {start_date_str_comp} to {end_date_str_comp}."
+
+                    send_fcm_notification(
+                        user=company_user,
+                        title=title_company,
+                        body=msg_company,
+                        data={"type": "companybooking", "booking_id": str(booking.booking_id)},
+                        image=car_image
+                    )
+                    if hasattr(company_user, 'email') and company_user.email:
+                        company_name = company_user.user_info.full_names if hasattr(company_user, 'user_info') else 'Partner'
+                        send_notification_email(
+                            to_email=company_user.email,
+                            subject="New Rental Booking Confirmed!",
+                            name=company_name,
+                            message=f"A customer has successfully paid for a booking of your {booking.car.brand} {booking.car.name}. Please prepare the vehicle for the rental period.",
+                            details={
+                                "Booking ID": booking.booking_number if hasattr(booking, 'booking_number') else booking.booking_id,
+                                "Rental Period": f"{booking.start_date.strftime('%d %b %y')} - {booking.end_date.strftime('%d %b %y')}",
+                                "Customer Name": customer_name_company
+                            },
+                            action_text="View Dashboard",
+                            action_url="https://sevymobility.com"
+                        )
+                        
+                # Customer Receipt Email
+                user = booking.user
+                send_notification_email(
+                    to_email=user.email,
+                    subject="RENTAL RECEIPT",
+                    name=user.user_info.full_names if hasattr(user, 'user_info') else 'Customer',
+                    message="Thank you for booking with us. Here is your receipt.",
+                    details={
+                        "Total Amount": f"{amount} RWF",
+                        "Booking ID": booking.booking_number if hasattr(booking, 'booking_number') else booking.booking_id,
+                        "Car": f"{booking.car.brand} {booking.car.name}",
+                        "Pickup Address": booking.delivery_address or "N/A",
+                        "From Date": booking.start_date.strftime('%d %b %Y, %I:%M %p') if booking.start_date else "N/A",
+                        "To Date": booking.end_date.strftime('%d %b %Y, %I:%M %p') if booking.end_date else "N/A",
+                        "Transaction Time": customer_transaction.created_at.strftime('%d %b %Y, %I:%M %p') if hasattr(customer_transaction, 'created_at') else "N/A"
+                    },
+                    action_text="View details",
+                    action_url="https://sevymobility.com/rentals"
+                )
+            except Exception as e:
+                print(f"Error in send_external_notifications: {e}")
+
+        threading.Thread(target=send_external_notifications).start()        
         return Response({
             "code": 201,
             "status": True,

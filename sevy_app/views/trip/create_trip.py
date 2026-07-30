@@ -101,13 +101,7 @@ def create_trip(request):
             notification_type='trip',
             related_id=trip.trip_id
         )
-        
-        notify_admins(
-            title="New Trip Request",
-            message=f"A new request arrived for trip from {start_place_name} to {destination_name}.",
-            notification_type='trip',
-            related_id=trip.trip_id
-        )
+
         
         return Response({
             "code": 201,

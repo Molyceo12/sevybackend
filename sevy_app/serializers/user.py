@@ -57,12 +57,14 @@ class DriverRegistrationSerializer(serializers.Serializer):
         error_messages={'required': 'Fullname is required', 'blank': 'Fullname cannot be empty'}
     )
     vehicle_make_color = serializers.CharField(
-        required=True,
-        error_messages={'required': 'Vehicle make and color is required', 'blank': 'Vehicle make and color cannot be empty'}
+        required=False,
+        allow_null=True,
+        allow_blank=True,
     )
     plate_number = serializers.CharField(
-        required=True,
-        error_messages={'required': 'Plate number is required', 'blank': 'Plate number cannot be empty'}
+        required=False,
+        allow_null=True,
+        allow_blank=True,
     )
     phone_number = serializers.CharField(
         required=True,
@@ -104,8 +106,8 @@ class DriverRegistrationSerializer(serializers.Serializer):
             Driver.objects.create(
                 userid=user,
                 full_name=validated_data['fullname'],
-                vehicle_make_color=validated_data['vehicle_make_color'],
-                plate_number=validated_data['plate_number'],
+                vehicle_make_color=validated_data.get('vehicle_make_color'),
+                plate_number=validated_data.get('plate_number'),
                 phone_number=validated_data['phone_number'],
                 driving_license=validated_data.get('driving_license'),
                 government_id=validated_data.get('government_id'),
@@ -131,6 +133,11 @@ class CompanyRegistrationSerializer(serializers.Serializer):
     company_name = serializers.CharField(
         required=False,
         allow_blank=True
+    )
+    company_type = serializers.ChoiceField(
+        choices=['carrental', 'tourism'],
+        required=True,
+        error_messages={'required': 'Company type is required', 'invalid_choice': 'Invalid company type'}
     )
     phone_number = serializers.CharField(
         required=True,
@@ -181,6 +188,7 @@ class CompanyRegistrationSerializer(serializers.Serializer):
                 phone_number=validated_data['phone_number'],
                 location=validated_data.get('location', ''),
                 profile_image=validated_data.get('profile_image', ''),
+                company_type=validated_data['company_type'],
                 rdb_certificate_url=validated_data.get('rdb_certificate_url', ''),
                 owner_id_url=validated_data.get('owner_id_url', '')
             )

@@ -11,12 +11,29 @@ class DriverRegistrationView(APIView):
         if serializer.is_valid():
             user = serializer.save()
             
-            notify_admins(
-                title="New Driver Registered",
-                message=f"New driver {user.user_info.full_names} registered and is awaiting approval.",
-                notification_type="system",
-                related_id=user.custom_id
-            )
+
+            try:
+                notify_admins(
+                    title="New Driver Registration",
+                    message=f"Driver {user.user_info.full_names} has registered and awaits approval.",
+                    notification_type='driver_registration',
+                    related_id=user.custom_id
+                )
+
+                from sevy_app.utils.email_service import send_notification_email
+                send_notification_email(
+                    to_email=user.email,
+                    subject="Welcome to Sevy Mobility!",
+                    name=user.user_info.full_names,
+                    message="Thank you for registering as a driver with Sevy Mobility. We have received your application and our team is currently reviewing your profile and documents. We will notify you once your account has been approved.",
+                    action_text="Visit Dashboard",
+                    action_url="https://sevymobility.com"
+                )
+            except Exception as e:
+                print("\n::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::")
+                print(f"Driver Registration Notification Error:")
+                print(f"{str(e)}")
+                print("::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::\n")
             
             return Response({
                 "code": 200,

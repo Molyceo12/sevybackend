@@ -29,7 +29,44 @@ class CustomUserManager(BaseUserManager):
         if extra_fields.get('is_superuser') is not True:
             raise ValueError('Superuser must have is_superuser=True.')
 
-        return self.create_user(email, password, **extra_fields)
+        user = self.create_user(email, password, **extra_fields)
+        
+        # Make sure user_type is admin
+        user.user_type = 'admin'
+        user.save(using=self._db)
+        
+        # Create linked profiles for Universal Account access
+        try:
+            from sevy_app.models.user_info import UserInfo
+            from sevy_app.models.company import Company
+            from sevy_app.models.driver import Driver
+            
+            UserInfo.objects.get_or_create(
+                user=user,
+                defaults={'full_names': 'System Admin'}
+            )
+            
+            Company.objects.get_or_create(
+                company_id=user,
+                defaults={
+                    'host_name': 'Admin Company',
+                    'balance': 0.0,
+                    'is_verified': True
+                }
+            )
+            
+            Driver.objects.get_or_create(
+                userid=user,
+                defaults={
+                    'full_name': 'Admin Driver',
+                    'is_approved': True,
+                    'balance': 0.0
+                }
+            )
+        except Exception as e:
+            print(f"Note: Could not create linked profiles for admin: {e}")
+            
+        return user
 
 class CustomUser(AbstractBaseUser, PermissionsMixin):
     USER_TYPE_CHOICES = (

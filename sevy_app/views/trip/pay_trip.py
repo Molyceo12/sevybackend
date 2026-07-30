@@ -152,13 +152,13 @@ def pay_trip(request):
         trip.transaction = customer_transaction
         trip.save()
         
-        # Trigger Celery timeout task for 2 minutes (120 seconds) for the driver
+        # Trigger Celery timeout task for 8 minutes (480 seconds) for the driver
         from sevy_app.tasks import trip_timeout_task
         try:
             print(f"\n:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::")
             print(f"Trip {trip.trip_id} is paid and received in celery")
             print(f":::::::::::::::::::::::::::::::\n")
-            trip_timeout_task.apply_async((trip.trip_id, 'waiting'), countdown=120)
+            trip_timeout_task.apply_async((trip.trip_id, 'waiting'), countdown=480)
         except Exception as celery_err:
             print(f"Failed to schedule celery task: {celery_err}")
         
@@ -171,12 +171,51 @@ def pay_trip(request):
             related_id=customer_transaction.transaction_id
         )
         
-        notify_admins(
-            title="Payment to Driver Successful",
-            message=f"Payment to driver successfully made for trip {trip.trip_id} (Net: {driver_net} RWF).",
-            notification_type='transaction',
-            related_id=customer_transaction.transaction_id
+
+        
+        # Send Trip Receipt Email
+        from sevy_app.utils.email_service import send_notification_email
+        send_notification_email(
+            to_email=user.email,
+            subject="TRIP RECEIPT",
+            name=user.user_info.full_names if hasattr(user, 'user_info') else user.email,
+            message="Thanks for riding with Sevy Mobility. Your payment was successful and your trip is now complete!",
+            table_title="TRIP INFORMATION",
+            details={
+                "Trip No": trip.tracking_number if trip.tracking_number else trip.trip_id,
+                "Payment Method": payment_method,
+                "Date": customer_transaction.created_at.strftime('%Y-%m-%d %H:%M') if hasattr(customer_transaction, 'created_at') else ""
+            },
+            total_amount=f"{round(total_amount, 2)} RWF",
+            total_label="Total Amount",
+            closing_message="We hope you had a great experience. We look forward to seeing you again soon!"
         )
+        
+        # Send Assignment Email to Driver
+        if trip.driverid and trip.driverid.userid and hasattr(trip.driverid.userid, 'email'):
+            driver_name = trip.driverid.userid.user_info.full_names if hasattr(trip.driverid.userid, 'user_info') else trip.driverid.full_name
+            send_notification_email(
+                to_email=trip.driverid.userid.email,
+                subject="New Trip Assigned!",
+                name=driver_name,
+                message=f"You have been assigned to a new trip (ID: {trip.tracking_number if trip.tracking_number else trip.trip_id}). The customer has successfully paid for the trip and is waiting. You have 15 minutes to accept the trip. Please log into the app to view the trip details and start navigation.",
+                details={
+                    "Pickup Location": trip.start_place_name,
+                    "Dropoff Location": trip.destination_name,
+                    "Distance": f"{trip.trip_distance_km} km" if trip.trip_distance_km else "N/A"
+                },
+                action_text="View Trip",
+                action_url="https://sevymobility.com"
+            )
+            
+            # Send FCM Notification to the Driver
+            from sevy_app.utils.fcm_service import send_fcm_notification
+            send_fcm_notification(
+                user=trip.driverid.userid,
+                title="New Trip Assigned!",
+                body="A customer has paid for a trip and is waiting for you. You have 15 minutes to accept the trip.",
+                data={"type": "drivertrip", "trip_id": str(trip.trip_id)}
+            )
         
         return Response({
             "code": 201,
@@ -201,6 +240,8 @@ def pay_trip(request):
             "body": {}
         }, status=400)
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         return Response({
             "code": 500,
             "status": False,

@@ -17,16 +17,21 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 
+import os
+
+env = os.environ.get('ENV', 'test')
+api_prefix = f'api/{env}/'
+
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('api/', include('sevy_app.routes.auth')),
-    path('api/places/', include('sevy_app.routes.places')),
-    path('api/user/', include('sevy_app.routes.user')),
-    path('api/driver/', include('sevy_app.routes.driver')),
-    path('api/trip/', include('sevy_app.routes.trip')),
-    path('api/transaction/', include('sevy_app.routes.transaction')),
-    path('api/rentals/', include('sevy_app.routes.rentals')),
-    path('api/bookings/', include('sevy_app.routes.bookings')),
-    path('api/company/', include('sevy_app.routes.company')),
-    path('api/admin/', include('sevy_app.routes.admin')),
+    path(api_prefix, include('sevy_app.routes.auth')),
+    path(f'{api_prefix}places/', include('sevy_app.routes.places')),
+    path(f'{api_prefix}user/', include('sevy_app.routes.user')),
+    path(f'{api_prefix}driver/', include('sevy_app.routes.driver')),
+    path(f'{api_prefix}trip/', include('sevy_app.routes.trip')),
+    path(f'{api_prefix}transaction/', include('sevy_app.routes.transaction')),
+    path(f'{api_prefix}rentals/', include('sevy_app.routes.rentals')),
+    path(f'{api_prefix}bookings/', include('sevy_app.routes.bookings')),
+    path(f'{api_prefix}company/', include('sevy_app.routes.company')),
+    path(f'{api_prefix}admin/', include('sevy_app.routes.admin')),
 ]

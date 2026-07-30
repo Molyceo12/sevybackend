@@ -8,9 +8,9 @@ from sevy_app.models import Trip, Driver
 def update_trip_status(request):
     try:
         trip_id = request.data.get('trip_id')
-        is_ready = request.data.get('is_ready')
-        is_coming = request.data.get('is_coming')
-        is_rejected = request.data.get('is_rejected')
+        is_ready = request.data.get('is_ready') in [True, 'true', 'True']
+        is_coming = request.data.get('is_coming') in [True, 'true', 'True']
+        is_rejected = request.data.get('is_rejected') in [True, 'true', 'True']
         
         if not trip_id:
             return Response({
@@ -20,11 +20,11 @@ def update_trip_status(request):
                 "body": {}
             }, status=400)
             
-        if is_ready is True:
+        if is_ready:
             driver_status = 'ready'
-        elif is_coming is True:
+        elif is_coming:
             driver_status = 'coming'
-        elif is_rejected is True:
+        elif is_rejected:
             driver_status = 'rejected'
         else:
             return Response({
@@ -58,20 +58,13 @@ def update_trip_status(request):
                     "body": {}
                 }, status=400)
                 
-            if is_ready is True:
+            if is_ready:
                 booking.driver_status = 'accepted'
                 driver.is_available = False
                 driver.save()
                 
-                # Schedule completion task for the exact end_date
-                from sevy_app.tasks import complete_booking_task
-                try:
-                    complete_booking_task.apply_async((booking.booking_id,), eta=booking.end_date)
-                    print(f"Scheduled completion for booking {booking.booking_id} at {booking.end_date}")
-                except Exception as celery_err:
-                    print(f"Failed to schedule completion task: {celery_err}")
-                    
-            elif is_rejected is True:
+                # Auto-completion celery task removed; now done manually                    
+            elif is_rejected:
                 booking.driver_status = 'rejected'
                 driver.is_available = True
                 driver.save()
@@ -88,7 +81,7 @@ def update_trip_status(request):
                     booking.created_at = timezone.now()
                     
                     try:
-                        booking_timeout_task.apply_async((booking.booking_id,), countdown=120)
+                        booking_timeout_task.apply_async((booking.booking_id,), countdown=480)
                     except Exception as celery_err:
                         print(f"Failed to schedule celery task: {celery_err}")
                         
@@ -97,7 +90,7 @@ def update_trip_status(request):
                         user=new_driver.userid,
                         title="New Booking Request",
                         message="You have a new car rental booking request.",
-                        notification_type='rental',
+                        notification_type='driverbooking',
                         related_id=booking.booking_id
                     )
 
@@ -105,7 +98,8 @@ def update_trip_status(request):
             
             # Customer Notification
             from sevy_app.models import Notification
-            if is_rejected is True:
+            from sevy_app.utils.fcm_service import send_fcm_notification
+            if is_rejected:
                 Notification.objects.create(
                     user=booking.user,
                     title="Booking Request Rejected",
@@ -113,13 +107,25 @@ def update_trip_status(request):
                     notification_type='rental',
                     related_id=booking.booking_id
                 )
-            elif is_ready is True:
+                send_fcm_notification(
+                    user=booking.user,
+                    title="Booking Request Rejected",
+                    body="Your assigned driver rejected the booking. We have assigned another driver to you.",
+                    data={"type": "rental", "booking_id": str(booking.booking_id)}
+                )
+            elif is_ready:
                 Notification.objects.create(
                     user=booking.user,
                     title="Driver Accepted",
                     message=f"Your driver {driver.full_name} has accepted your rental request.",
                     notification_type='rental',
                     related_id=booking.booking_id
+                )
+                send_fcm_notification(
+                    user=booking.user,
+                    title="Driver Accepted",
+                    body="Your assigned driver has accepted the rental booking.",
+                    data={"type": "rental", "booking_id": str(booking.booking_id)}
                 )
                 
             return Response({
@@ -151,13 +157,13 @@ def update_trip_status(request):
             driver.save()
             trip.created_at = timezone.now()
             
-            # Start the 3-minute (180 seconds) countdown for the driver to start driving
+            # Start the 10-minute (600 seconds) countdown for the driver to start driving
             from sevy_app.tasks import trip_timeout_task
             try:
                 print(f"\n:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::")
-                print(f"Driver {driver.full_name} accepted Trip {trip.trip_id}. Starting 3-minute 'ready' countdown.")
+                print(f"Driver {driver.full_name} accepted Trip {trip.trip_id}. Starting 10-minute 'ready' countdown.")
                 print(f":::::::::::::::::::::::::::::::\n")
-                trip_timeout_task.apply_async((trip.trip_id, 'ready'), countdown=180)
+                trip_timeout_task.apply_async((trip.trip_id, 'ready'), countdown=600)
             except Exception as celery_err:
                 print(f"Failed to schedule 3-minute celery task: {celery_err}")
                 
@@ -178,7 +184,7 @@ def update_trip_status(request):
                 trip.created_at = timezone.now()
                 
                 try:
-                    trip_timeout_task.apply_async((trip.trip_id, 'waiting'), countdown=120)
+                    trip_timeout_task.apply_async((trip.trip_id, 'waiting'), countdown=480)
                 except Exception as celery_err:
                     print(f"Failed to schedule celery task: {celery_err}")
                     
@@ -188,7 +194,7 @@ def update_trip_status(request):
                     user=new_driver.userid,
                     title="New Trip Request",
                     message=f"You have a new trip request from {trip.start_place_name} to {trip.destination_name}.",
-                    notification_type='trip',
+                    notification_type='drivertrip',
                     related_id=trip.trip_id
                 )
 
@@ -196,8 +202,9 @@ def update_trip_status(request):
         
         # Create a notification for the customer only if not silently reassigning
         from sevy_app.models import Notification
+        from sevy_app.utils.fcm_service import send_fcm_notification
         
-        if driver_status == 'rejected':
+        if is_rejected:
             status_msg = "has rejected"
             title = "Trip Request Rejected"
             Notification.objects.create(
@@ -207,7 +214,20 @@ def update_trip_status(request):
                 notification_type='trip',
                 related_id=trip.trip_id
             )
-        elif driver_status == 'ready':
+            send_fcm_notification(
+                user=trip.userid,
+                title=title,
+                body="Driver cancelled the trip. We are looking for another driver for you.",
+                data={"type": "trip", "trip_id": str(trip.trip_id)}
+            )
+            from sevy_app.utils.notifications import notify_admins
+            notify_admins(
+                title="Trip Rejected by Driver",
+                message=f"Driver {driver.full_name} rejected trip {trip.tracking_number or trip.trip_id}.",
+                notification_type="trip_cancelled",
+                related_id=trip.trip_id
+            )
+        elif is_ready:
             status_msg = "is getting ready for"
             title = "Driver is Ready"
             Notification.objects.create(
@@ -217,7 +237,7 @@ def update_trip_status(request):
                 notification_type='trip',
                 related_id=trip.trip_id
             )
-        elif driver_status == 'coming':
+        elif is_coming:
             status_msg = "is on the way for"
             title = "Driver is Coming"
             Notification.objects.create(
@@ -226,6 +246,12 @@ def update_trip_status(request):
                 message=f"Your driver {driver.full_name} {status_msg} your trip request.",
                 notification_type='trip',
                 related_id=trip.trip_id
+            )
+            send_fcm_notification(
+                user=trip.userid,
+                title=title,
+                body=f"The driver is on their way. Expect them to arrive in {trip.estimated_time} (Distance: {trip.trip_distance_km} km).",
+                data={"type": "trip", "trip_id": str(trip.trip_id)}
             )
         
         return Response({

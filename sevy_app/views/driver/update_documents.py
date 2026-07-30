@@ -33,12 +33,7 @@ def update_driver_documents(request, driver_id):
         driver.is_approved = False # Wait for admin to approve the new documents
         driver.save()
         
-        notify_admins(
-            title="Documents Updated",
-            message=f"Driver {driver.userid.user_info.full_names if hasattr(driver.userid, 'user_info') else driver.userid.custom_id} updated their documents.",
-            notification_type="system",
-            related_id=driver.userid.custom_id
-        )
+
         
         return Response({
             "message": "Documents updated successfully. Awaiting admin review."

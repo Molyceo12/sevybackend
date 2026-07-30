@@ -12,13 +12,4 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RemoveField(
-            model_name='company',
-            name='company_id',
-        ),
-        migrations.AlterField(
-            model_name='company',
-            name='userid',
-            field=models.OneToOneField(help_text='Links to auth User for password & login', on_delete=django.db.models.deletion.CASCADE, primary_key=True, related_name='company_profile', serialize=False, to=settings.AUTH_USER_MODEL),
-        ),
     ]

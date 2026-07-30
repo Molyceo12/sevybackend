@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }}</title>
+    <style>
+        body { font-family: 'Inter', -apple-system, sans-serif; background-color: #F8FAFC; margin: 0; padding: 0; color: #1E293B; }
+        .container { max-width: 600px; margin: 40px auto; background-color: #FFFFFF; border-radius: 12px; overflow: hidden; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.05); border-top: 6px solid #F59E0B; }
+        .header { padding: 30px; text-align: center; border-bottom: 1px solid #F1F5F9; }
+        .header img { max-width: 140px; }
+        .content { padding: 40px 30px; }
+        .badge { display: inline-block; background-color: #FEF3C7; color: #B45309; padding: 6px 12px; border-radius: 9999px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 20px; }
+        .title { font-size: 24px; font-weight: 700; margin-bottom: 20px; color: #0F172A; }
+        .message { font-size: 16px; line-height: 1.6; margin-bottom: 30px; color: #475569; }
+        .details-box { background-color: #F8FAFC; border-radius: 8px; padding: 20px; margin-bottom: 30px; border: 1px solid #E2E8F0; }
+        .details-box table { width: 100%; border-collapse: collapse; }
+        .details-box th { text-align: left; padding: 8px 0; color: #64748B; font-weight: 500; font-size: 14px; width: 40%; }
+        .details-box td { padding: 8px 0; font-weight: 600; color: #1E293B; font-size: 14px; }
+        .button-container { text-align: center; margin: 40px 0 20px; }
+        .button { background-color: #F59E0B; color: #FFFFFF !important; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-size: 16px; font-weight: 600; display: inline-block; box-shadow: 0 4px 6px -1px rgba(245,158,11,0.2); }
+        .footer { background-color: #F8FAFC; padding: 24px; text-align: center; font-size: 13px; color: #94A3B8; border-top: 1px solid #F1F5F9; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <img src="cid:sevy_logo" alt="Sevy Mobility">
+        </div>
+        <div class="content">
+            <div class="badge">Customer Support</div>
+            <div class="title">{{ title }}</div>
+            <div class="message">
+                {{ message|safe }}
+                <br><br>
+                A customer has flagged an issue requiring admin intervention. Please investigate this report promptly to ensure customer satisfaction.
+            </div>
+            
+            {% if details %}
+            <div class="details-box">
+                <table>
+                    {% for key, value in details.items %}
+                    <tr>
+                        <th>{{ key }}</th>
+                        <td>{{ value }}</td>
+                    </tr>
+                    {% endfor %}
+                </table>
+            </div>
+            {% endif %}
+
+            <div class="button-container">
+                <a href="#" class="button">Investigate Issue</a>
+            </div>
+        </div>
+        <div class="footer">
+            &copy; {% now "Y" %} Sevy Mobility Admin System
+        </div>
+    </div>
+</body>
+</html>

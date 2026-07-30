@@ -118,8 +118,10 @@ def get_user_bookings(request):
                 
                 "status": booking.status,
                 "driver_status": booking.driver_status,
-                "admin_approval_status": booking.admin_approval_status,
+                "admin_company_approval": booking.admin_company_approval,
+                "admin_driver_approval": booking.admin_driver_approval,
                 "payment_status": booking.payment_status,
+                "customer_approval_status": booking.customer_approval_status,
                 
                 "created_at": booking.created_at.isoformat() if booking.created_at else None,
                 "updated_at": booking.updated_at.isoformat() if booking.updated_at else None

@@ -120,6 +120,7 @@ def get_user(request):
             if not body["phone_number"] and company.phone_number:
                 body["phone_number"] = company.phone_number
             body["is_approved"] = company.is_verified
+            body["company_type"] = company.company_type
         
         return Response({
             "code": 200,

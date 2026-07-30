@@ -44,14 +44,42 @@ def get_driver_details(request):
         total_bookings_count = completed_bookings.count()
         
         # Total Earned from completed trips and bookings
-        total_trip_earnings = sum([float(t.total_price) for t in completed_trips])
-        total_booking_earnings = sum([float(b.total_price) for b in completed_bookings])
-        total_earned = total_trip_earnings + total_booking_earnings
+        total_trip_earnings = completed_trips.aggregate(Sum('total_price'))['total_price__sum'] or 0.0
+        total_booking_earnings = completed_bookings.aggregate(Sum('total_price'))['total_price__sum'] or 0.0
+        total_earned = float(total_trip_earnings) + float(total_booking_earnings)
 
         # Fetch all related transactions for the driver
-        all_transactions_qs = Transaction.objects.filter(user=user).order_by('-created_at')
+        all_transactions_qs = Transaction.objects.filter(user=user).order_by('-created_at')[:50]
         tx_list = []
         for tx in all_transactions_qs:
+            title = None
+            subtitle = None
+            image_url = None
+
+            if tx.transaction_type == 'carbooking' and tx.related_id:
+                booking = CarBooking.objects.filter(booking_id=tx.related_id).first()
+                if booking:
+                    if booking.user and hasattr(booking.user, 'user_info'):
+                        title = booking.user.user_info.full_names
+                    elif booking.user:
+                        title = "Customer"
+                        
+                    if booking.car:
+                        subtitle = booking.car.name
+                        if booking.car.images and len(booking.car.images) > 0:
+                            image_url = booking.car.images[0]
+            elif tx.transaction_type == 'trip' and tx.related_id:
+                trip = Trip.objects.filter(trip_id=tx.related_id).first()
+                if trip:
+                    if trip.userid and hasattr(trip.userid, 'user_info'):
+                        title = trip.userid.user_info.full_names
+                    elif trip.userid:
+                        title = "Passenger"
+                    subtitle = trip.service_type if hasattr(trip, 'service_type') else "Trip"
+            elif tx.transaction_type == 'withdrawal':
+                title = "Withdrawal"
+                subtitle = tx.payment_method or "Mobile Money"
+                
             tx_list.append({
                 "transaction_id": tx.transaction_id,
                 "reference_number": tx.reference_number,
@@ -62,7 +90,12 @@ def get_driver_details(request):
                 "payment_method": tx.payment_method,
                 "status": tx.status,
                 "description": tx.description,
-                "created_at": tx.created_at
+                "created_at": tx.created_at,
+                "metadata": {
+                    "title": title,
+                    "subtitle": subtitle,
+                    "image_url": image_url
+                }
             })
 
         body = {

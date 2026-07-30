@@ -27,12 +27,20 @@ def get_trip_details(request):
 
         driver_name = "Unknown"
         driver_car = "Unknown"
+        driver_lat = None
+        driver_long = None
         if trip.driverid:
             driver_name = trip.driverid.full_name
             if trip.service_type != 'driver_only':
                 driver_car = trip.driverid.vehicle_make_color
             else:
                 driver_car = None
+                
+            from sevy_app.models import DriverLocation
+            loc = DriverLocation.objects.filter(userid=trip.driverid.userid).first()
+            if loc:
+                driver_lat = float(loc.lat) if loc.lat else None
+                driver_long = float(loc.long) if loc.long else None
 
         from sevy_app.models import SystemConfig
         config = SystemConfig.objects.first()
@@ -68,8 +76,13 @@ def get_trip_details(request):
             "userid": trip.userid.custom_id if trip.userid else None,
             "driverid": trip.driverid.userid.custom_id if trip.driverid and trip.driverid.userid else None,
             "driver_name": driver_name,
+            "driver_phone": trip.driverid.phone_number if trip.driverid else None,
             "driver_car": driver_car,
+            "driver_lat": driver_lat,
+            "driver_long": driver_long,
             "start_place_name": trip.start_place_name,
+            "start_lat": trip.start_lat,
+            "start_long": trip.start_long,
             "destination_name": trip.destination_name,
             "estimated_time": trip.estimated_time,
             "distance": f"{trip.trip_distance_km} km" if trip.trip_distance_km else "Unknown",

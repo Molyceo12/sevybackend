@@ -27,8 +27,12 @@ def get_notifications(request):
             }, status=404)
             
         if user.user_type == 'admin':
-            # Admins share notifications created for any admin
-            notifications = Notification.objects.filter(user__user_type='admin').order_by('-created_at')
+            # Admins share notifications created for any admin, but we ONLY want admin-specific notifications
+            # (starts with 'admin') so personal notifications (like trips booked by the admin) don't show up.
+            notifications = Notification.objects.filter(
+                user__user_type='admin',
+                notification_type__startswith='admin'
+            ).order_by('-created_at')
         else:
             notifications = Notification.objects.filter(user=user).order_by('-created_at')
         

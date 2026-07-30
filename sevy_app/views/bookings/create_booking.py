@@ -81,7 +81,10 @@ def create_booking(request):
             total_price=float(total_price),
             status='pending',
             driver_status=driver_status,
-            payment_status='unpaid'
+            payment_status='unpaid',
+            customer_approval_status='waiting',
+            company_customer_approval='waiting',
+            driver_customer_approval='waiting' if driver else None
         )
         
         # Create a notification for the driver if one was selected
@@ -91,13 +94,13 @@ def create_booking(request):
                 user=driver.userid,
                 title="New Driving Assignment",
                 message=f"You have been requested to drive a {car.brand} {car.name} from {start_date} to {end_date}.",
-                notification_type='rental',
+                notification_type='driverbooking',
                 related_id=booking.booking_id
             )
             
-            # Start the 2-minute timeout task
+            # Start the 8-minute timeout task
             from sevy_app.tasks import booking_timeout_task
-            booking_timeout_task.apply_async((booking.booking_id,), countdown=120)
+            booking_timeout_task.apply_async((booking.booking_id,), countdown=480)
 
         # Notify the customer
         from sevy_app.models import Notification
@@ -109,27 +112,17 @@ def create_booking(request):
             related_id=booking.booking_id
         )
         
+
+        
         # Notify the company
         company_user = getattr(booking.companyid, 'company_id', None) if booking.companyid else None
         if not company_user and car.companyid:
             company_user = getattr(car.companyid, 'company_id', None)
             
         if company_user:
-            Notification.objects.create(
-                user=company_user,
-                title="New Booking Request",
-                message=f"A new booking request has been made for your {car.brand} {car.name} from {start_date} to {end_date}.",
-                notification_type='rental',
-                related_id=booking.booking_id
-            )
-            
-        # Notify admins
-        notify_admins(
-            title="New Booking Request",
-            message=f"New booking request for {car.brand} {car.name} from {start_date} to {end_date}.",
-            notification_type='rental',
-            related_id=booking.booking_id
-        )
+            pass
+            # Email notification removed as per requirement
+
         
         return Response({
             "code": 201,

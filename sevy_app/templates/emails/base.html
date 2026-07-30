@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>{{ subject }}</title>
+    <style>
+        body {
+            font-family: 'Inter', 'Segoe UI', Helvetica, Arial, sans-serif;
+            background-color: #f7f9fa;
+            margin: 0;
+            padding: 0;
+            color: #1a1a1a;
+            -webkit-font-smoothing: antialiased;
+        }
+        .container {
+            max-width: 600px;
+            margin: 40px auto;
+            background-color: #ffffff;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.06);
+            border: 2px solid #d1d5db;
+        }
+        .header {
+            padding: 40px 40px 20px 40px;
+            text-align: center;
+        }
+        .header img {
+            max-width: 250px;
+            width: 100%;
+            height: auto;
+        }
+        .content {
+            padding: 10px 40px 40px 40px;
+            line-height: 1.6;
+        }
+        .footer {
+            background-color: #fcfcfc;
+            padding: 24px 40px;
+            text-align: center;
+            font-size: 13px;
+            color: #888888;
+            border-top: 2px solid #e5e7eb;
+        }
+        h1 {
+            color: #000000;
+            font-size: 24px;
+            font-weight: 700;
+            margin-top: 0;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        p {
+            font-size: 15px;
+            color: #4a4a4a;
+            margin: 10px 0;
+        }
+        .invoice-box {
+            border: 2px solid #cbd5e1;
+            border-radius: 8px;
+            padding: 24px;
+            margin: 30px 0;
+            background-color: #ffffff;
+        }
+        .invoice-section-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #1a1a1a;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+            margin-top: 0;
+        }
+        .invoice-row {
+            display: table;
+            width: 100%;
+            margin-bottom: 12px;
+        }
+        .invoice-label {
+            display: table-cell;
+            color: #71717a;
+            font-size: 14px;
+            width: 50%;
+        }
+        .invoice-value {
+            display: table-cell;
+            text-align: right;
+            color: #1a1a1a;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        .divider {
+            height: 2px;
+            background-color: #cbd5e1;
+            margin: 16px 0;
+        }
+        .dashed-divider {
+            border-bottom: 2px dashed #94a3b8;
+            margin: 16px 0;
+        }
+        .total-row {
+            margin-top: 16px;
+        }
+        .total-label {
+            font-weight: 700;
+            color: #1a1a1a;
+            font-size: 16px;
+        }
+        .total-value {
+            font-weight: 700;
+            color: #1a1a1a;
+            font-size: 16px;
+        }
+        .btn {
+            display: inline-block;
+            background-color: #0b2e59;
+            color: #ffffff;
+            text-decoration: none;
+            padding: 14px 28px;
+            border-radius: 8px;
+            font-weight: 600;
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        /* Responsive Mobile Styles */
+        @media only screen and (max-width: 600px) {
+            .container {
+                width: 100% !important;
+                margin: 0 !important;
+                border: none !important;
+                border-radius: 0 !important;
+                box-shadow: none !important;
+            }
+            .header {
+                padding: 30px 20px 15px 20px !important;
+            }
+            .content {
+                padding: 10px 20px 30px 20px !important;
+            }
+            .footer {
+                padding: 24px 20px !important;
+            }
+            .invoice-box {
+                padding: 16px !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <img src="cid:sevy_logo" alt="Sevy Mobility">
+        </div>
+        <div class="content">
+            {% block content %}{% endblock %}
+        </div>
+        <div class="footer">
+            <p>&copy; {% now "Y" %} Sevy Mobility. All rights reserved.</p>
+            <p style="margin-top: 5px;">If you have any questions about this receipt, simply reply to this email.</p>
+        </div>
+    </div>
+</body>
+</html>

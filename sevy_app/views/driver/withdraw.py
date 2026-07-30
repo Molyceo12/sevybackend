@@ -16,6 +16,7 @@ def withdraw(request):
     """
     userid = request.data.get('userid')
     amount = request.data.get('amount')
+    payment_method = request.data.get('payment_method', 'N/A')
 
     if not userid:
         return Response({
@@ -79,15 +80,33 @@ def withdraw(request):
             amount=amount,
             currency='RWF',  # Standard currency used in the system
             status='waitingapproval',
-            description='Driver withdrawal request'
+            description='Driver withdrawal request',
+            payment_method=payment_method
         )
         
-        notify_admins(
-            title="New Withdrawal Request",
-            message=f"Driver {driver.userid.user_info.full_names if hasattr(driver.userid, 'user_info') else driver.userid.custom_id} requested a withdrawal of {amount} RWF.",
-            notification_type="transaction",
-            related_id=transaction.transaction_id
-        )
+        try:
+            notify_admins(
+                title="Withdrawal Request",
+                message=f"Driver {driver.userid.user_info.full_names if hasattr(driver.userid, 'user_info') else driver.userid.custom_id} requested a withdrawal of {amount} RWF.",
+                notification_type="driver_withdrawal",
+                related_id=transaction.transaction_id
+            )
+        except Exception as e:
+            print(f"\\n::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::")
+            print(f"Driver Withdrawal Notification Error:\\n{str(e)}")
+            print(f"::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::\\n")
+        
+        if driver.userid and driver.userid.email:
+            from sevy_app.utils.email_service import send_notification_email
+            driver_name = driver.userid.user_info.full_names if hasattr(driver.userid, 'user_info') else 'Driver'
+            send_notification_email(
+                to_email=driver.userid.email,
+                subject="Withdrawal Request Received",
+                name=driver_name,
+                message=f"We have received your withdrawal request for {amount} RWF. It is currently pending admin approval and will be processed shortly.",
+                action_text="View Dashboard",
+                action_url="https://sevymobility.com"
+            )
         
         # Set the 3-minute lock after a successful request
         cache.set(cache_key, True, timeout=180)
