@@ -69,9 +69,18 @@ def reject_transaction(request):
             recipient_type = "Company"
             
             image_url = None
-            booking = transaction.car_bookings.first()
+            booking = None
+            if transaction.related_id:
+                booking = CarBooking.objects.filter(booking_id=transaction.related_id).first()
+            if not booking:
+                booking = CarBooking.objects.filter(transaction=transaction).first()
+                
             if booking:
-                booking.admin_company_approval = 'rejected'
+                booking.admin_company_approval = 'denied'
+                if not booking.driver:
+                    booking.status = 'cancelled'
+                elif booking.admin_driver_approval in ['denied', 'cancelled']:
+                    booking.status = 'cancelled'
                 booking.save()
             if booking and booking.car and getattr(booking.car, 'images', None):
                 image_url = booking.car.images[0] if isinstance(booking.car.images, list) and len(booking.car.images) > 0 else None
@@ -140,17 +149,40 @@ def reject_transaction(request):
             recipient_type = "Driver"
             
             image_url = None
-            print("Checking car booking...")
+            print(f"Checking car booking... transaction.related_id='{transaction.related_id}'")
             try:
-                booking = transaction.car_bookings.first()
+                booking = None
+                if transaction.related_id:
+                    booking = CarBooking.objects.filter(booking_id=transaction.related_id).first()
+                if not booking:
+                    booking = CarBooking.objects.filter(transaction=transaction).first()
+                
                 print(f"Booking: {booking}")
                 if booking:
-                    booking.admin_driver_approval = 'rejected'
+                    booking.admin_driver_approval = 'denied'
+                    if booking.admin_company_approval in ['denied', 'cancelled']:
+                        booking.status = 'cancelled'
                     booking.save()
                 if booking and booking.car and getattr(booking.car, 'images', None):
                     image_url = booking.car.images[0] if isinstance(booking.car.images, list) and len(booking.car.images) > 0 else None
             except Exception as e:
                 print(f"Error accessing car_bookings: {e}")
+                
+            print("Checking trips...")
+            try:
+                trip = None
+                if transaction.related_id:
+                    trip = Trip.objects.filter(trip_id=transaction.related_id).first()
+                if not trip:
+                    trip = Trip.objects.filter(transaction=transaction).first()
+                
+                print(f"Trip: {trip}")
+                if trip:
+                    trip.approval_status = 'denied'
+                    trip.status = 'cancelled'
+                    trip.save()
+            except Exception as e:
+                print(f"Error accessing trips: {e}")
             
             # Notify the driver
             print("Creating notification...")

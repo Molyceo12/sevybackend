@@ -34,11 +34,23 @@ def create_trip(request):
             }, status=400)
         
         # Basic validation for essential fields
-        if not all([userid_val, estimated_time, total_price, start_lat, start_long, destination_lat, destination_long, trip_distance_km]):
+        required_fields = {
+            "userid": userid_val,
+            "estimated_time": estimated_time,
+            "total_price": total_price,
+            "start_lat": start_lat,
+            "start_long": start_long,
+            "destination_lat": destination_lat,
+            "destination_long": destination_long,
+            "trip_distance_km": trip_distance_km
+        }
+        
+        missing_fields = [k for k, v in required_fields.items() if v is None or v == ""]
+        if missing_fields:
             return Response({
                 "code": 400,
                 "status": False,
-                "message": "Missing required fields.",
+                "message": f"Missing required fields: {', '.join(missing_fields)}.",
                 "body": {}
             }, status=400)
             
@@ -71,6 +83,7 @@ def create_trip(request):
             total_price=float(total_price),
             payment_method=payment_method,
             service_type=request.data.get('service_type', 'driver_and_car'),
+            trip_type=request.data.get('trip_type', 'instanttrip'),
             start_lat=float(start_lat),
             start_long=float(start_long),
             start_place_name=start_place_name,
@@ -78,7 +91,8 @@ def create_trip(request):
             destination_long=float(destination_long),
             destination_name=destination_name,
             trip_distance_km=float(trip_distance_km) if trip_distance_km else None,
-            driver_status=driver_status
+            driver_status=driver_status,
+            **( {'start_time': request.data.get('start_time')} if request.data.get('start_time') else {} )
         )
         
         # Create a notification for the driver

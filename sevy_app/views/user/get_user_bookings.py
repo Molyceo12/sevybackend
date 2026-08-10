@@ -60,7 +60,8 @@ def get_user_bookings(request):
                     "rating": float(booking.car.rating) if booking.car.rating else 0.0,
                     "reviews_count": booking.car.reviews_count,
                     "images": booking.car.images,
-                    "price_per_day": float(booking.car.price_per_day) if booking.car.price_per_day else 0.0
+                    "price_per_day": float(booking.car.price_per_day) if booking.car.price_per_day else 0.0,
+                    "company_phone": booking.car.companyid.phone_number if booking.car.companyid else None
                 }
 
             # Payment Breakdown calculation
@@ -70,30 +71,34 @@ def get_user_bookings(request):
                 duration_days = 1
 
             car_price = float(booking.car.price_per_day) if booking.car and booking.car.price_per_day else 0.0
-            car_total = car_price * duration_days
-            car_commission = car_total * commission_rate
+            
+            # Use the exact total price from the table if available
+            base_total = float(booking.total_price) if booking.total_price else (car_price * duration_days + (driver_daily_price * duration_days if booking.booking_type == 'with_driver' else 0.0))
+            
+            if booking.booking_type == 'with_driver' and (car_price + driver_daily_price) > 0:
+                car_ratio = car_price / (car_price + driver_daily_price)
+                driver_ratio = driver_daily_price / (car_price + driver_daily_price)
+                actual_car_total = base_total * car_ratio
+                actual_driver_total = base_total * driver_ratio
+            else:
+                actual_car_total = base_total
+                actual_driver_total = 0.0
 
-            driver_total = 0.0
-            driver_commission = 0.0
-            if booking.booking_type == 'with_driver':
-                driver_total = driver_daily_price * duration_days
-                driver_commission = driver_total * commission_rate
-
-            subtotal = car_total + driver_total
-            service_fee = car_commission + driver_commission
+            car_commission = actual_car_total * commission_rate
+            driver_commission = actual_driver_total * commission_rate
 
             payment_breakdown = {
                 "duration_days": duration_days,
                 "car_price_per_day": car_price,
-                "car_total": car_total,
+                "car_total": actual_car_total - car_commission,
                 "car_commission": car_commission,
                 "driver_price_per_day": driver_daily_price if booking.booking_type == 'with_driver' else 0.0,
-                "driver_total": driver_total,
+                "driver_total": actual_driver_total - driver_commission,
                 "driver_commission": driver_commission,
-                "subtotal": subtotal,
+                "subtotal": base_total,
                 "commission_rate": commission_rate,
-                "service_fee_total": service_fee,
-                "final_total": subtotal + service_fee
+                "service_fee_total": car_commission + driver_commission,
+                "final_total": base_total
             }
 
             body = {
@@ -114,7 +119,7 @@ def get_user_bookings(request):
                 "pickup_location": booking.pickup_location,
                 "dropoff_location": booking.dropoff_location,
                 
-                "total_price": float(booking.total_price) if booking.total_price else (subtotal + service_fee),
+                "total_price": base_total,
                 
                 "status": booking.status,
                 "driver_status": booking.driver_status,
@@ -122,6 +127,8 @@ def get_user_bookings(request):
                 "admin_driver_approval": booking.admin_driver_approval,
                 "payment_status": booking.payment_status,
                 "customer_approval_status": booking.customer_approval_status,
+                "company_customer_approval": booking.company_customer_approval,
+                "driver_customer_approval": booking.driver_customer_approval,
                 
                 "created_at": booking.created_at.isoformat() if booking.created_at else None,
                 "updated_at": booking.updated_at.isoformat() if booking.updated_at else None

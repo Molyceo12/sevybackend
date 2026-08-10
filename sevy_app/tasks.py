@@ -91,8 +91,8 @@ def trip_timeout_task(trip_id, expected_status='waiting'):
                 data={"type": "trip", "trip_id": str(trip.trip_id)}
             )
             
-            # Schedule a new 8-minute timeout for the new driver
-            trip_timeout_task.apply_async((trip.trip_id, 'waiting'), countdown=480)
+            # Schedule a new 30-minute timeout for the new driver
+            trip_timeout_task.apply_async((trip.trip_id, 'waiting'), countdown=1800)
         else:
             print(f"No new driver available for trip {trip_id}. Trip remains or can be cancelled.")
                 
@@ -195,8 +195,8 @@ def booking_timeout_task(booking_id):
             CarBooking.objects.filter(pk=booking.pk).update(created_at=now)
             print(f"Re-assigned booking {booking_id} to new driver {new_driver.full_name}")
             
-            # Schedule a new 8-minute timeout for the new driver
-            booking_timeout_task.apply_async((booking.booking_id,), countdown=480)
+            # Schedule a new 30-minute timeout for the new driver
+            booking_timeout_task.apply_async((booking.booking_id,), countdown=1800)
         else:
             booking.status = 'cancelled'
             booking.driver_status = None
@@ -396,10 +396,14 @@ def auto_approve_booking_completion_task(booking_id):
 
 @shared_task
 def send_fcm_notification_task(user_id, title, body, data=None, image=None):
+    print(f"\n::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::")
+    print(f"NEW FCM NOTIFICATION TASK ON CELERY")
+    print(f"head: {title}, user_id: {user_id}")
+    print(f":::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::\n")
     from django.contrib.auth import get_user_model
     User = get_user_model()
     try:
-        user = User.objects.get(id=user_id)
+        user = User.objects.get(pk=user_id)
         from sevy_app.utils.fcm_service import _execute_send_fcm_notification
         _execute_send_fcm_notification(user, title, body, data, image)
     except User.DoesNotExist:
@@ -409,8 +413,60 @@ def send_fcm_notification_task(user_id, title, body, data=None, image=None):
 
 @shared_task
 def send_email_task(to_email, subject, template_name, context_data):
+    print(f"\n::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::")
+    print(f"NEW EMAIL TASK ON CELERY")
+    print(f"head: {subject}, to: {to_email}")
+    print(f":::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::\n")
     try:
         from sevy_app.utils.email_service import _execute_send_customer_email
         _execute_send_customer_email(to_email, subject, template_name, context_data)
     except Exception as e:
         print(f"Error in send_email_task: {str(e)}")
+
+@shared_task
+def scheduled_trip_reminder_task(trip_id, minutes_left):
+    try:
+        trip = Trip.objects.get(trip_id=trip_id)
+        driver = trip.driverid
+        if not driver:
+            return
+
+        if trip.status not in ['upcoming', 'active'] or trip.driver_status not in ['ready', 'coming']:
+            print(f"Skipping reminder for trip {trip_id}, status changed.")
+            return
+            
+        from sevy_app.utils.fcm_service import send_fcm_notification
+        
+        if minutes_left == 60:
+            msg = f"Reminder: Your scheduled trip from {trip.start_place_name} starts in 1 hour."
+        elif minutes_left == 30:
+            msg = f"Reminder: Your scheduled trip from {trip.start_place_name} starts in 30 minutes."
+        else:
+            msg = f"Reminder: Your scheduled trip from {trip.start_place_name} starts in {minutes_left} minutes! Time to get ready."
+            
+        send_fcm_notification(
+            user=driver.userid,
+            title="Scheduled Trip Reminder",
+            body=msg,
+            data={"type": "trip", "trip_id": str(trip.trip_id)}
+        )
+        
+        from sevy_app.utils.email_service import send_notification_email
+        if hasattr(driver.userid, 'email') and driver.userid.email:
+            send_notification_email(
+                to_email=driver.userid.email,
+                subject="Scheduled Trip Reminder",
+                name=driver.full_name,
+                message=msg,
+                details={
+                    "Pickup Location": trip.start_place_name,
+                    "Destination": trip.destination_name,
+                    "Minutes Left": str(minutes_left)
+                },
+                table_title="TRIP DETAILS"
+            )
+            
+        print(f"Sent {minutes_left}m reminder to driver {driver.full_name} for trip {trip_id}.")
+        
+    except Trip.DoesNotExist:
+        print(f"Reminder skipped: Trip {trip_id} not found.")

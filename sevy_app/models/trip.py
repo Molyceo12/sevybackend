@@ -1,6 +1,7 @@
 import secrets
 from django.db import models
 from django.conf import settings
+from django.utils import timezone
 
 def generate_trip_id():
     return secrets.token_hex(12)
@@ -17,6 +18,11 @@ class Trip(models.Model):
     SERVICE_TYPE_CHOICES = (
         ('driver_and_car', 'Driver & Car'),
         ('driver_only', 'Driver Only'),
+    )
+
+    TRIP_TYPE_CHOICES = (
+        ('instanttrip', 'Instant Trip'),
+        ('scheduledtrip', 'Scheduled Trip'),
     )
 
     DRIVER_STATUS_CHOICES = (
@@ -52,6 +58,7 @@ class Trip(models.Model):
     payment_status = models.CharField(max_length=20, choices=PAYMENT_STATUS_CHOICES, default='unpaid')
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='upcoming')
     service_type = models.CharField(max_length=20, choices=SERVICE_TYPE_CHOICES, default='driver_and_car')
+    trip_type = models.CharField(max_length=20, choices=TRIP_TYPE_CHOICES, default='instanttrip')
     driver_status = models.CharField(max_length=20, choices=DRIVER_STATUS_CHOICES, default='waiting')
     approval_status = models.CharField(max_length=20, choices=APPROVAL_STATUS_CHOICES, default='waiting')
     
@@ -73,6 +80,7 @@ class Trip(models.Model):
     
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    start_time = models.DateTimeField(default=timezone.now)
 
     class Meta:
         db_table = 'trips'

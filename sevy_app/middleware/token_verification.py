@@ -23,6 +23,8 @@ class TokenVerificationMiddleware(MiddlewareMixin):
             f'{api_prefix}register-driver/',
             f'{api_prefix}company/register/',
             f'{api_prefix}token/refresh/',
+            f'{api_prefix}forgot-password/',
+            f'{api_prefix}reset-password/',
         ]
         
         # We only verify requests that go to /api/

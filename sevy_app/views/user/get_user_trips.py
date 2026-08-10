@@ -27,6 +27,7 @@ def get_user_trips(request):
                 "status": trip.status,
                 "payment_status": trip.payment_status,
                 "service_type": trip.service_type,
+                "trip_type": getattr(trip, 'trip_type', 'instanttrip'),
                 "driver_status": trip.driver_status,
                 "total_price": str(trip.total_price),
                 "estimated_time": trip.estimated_time,
@@ -40,7 +41,9 @@ def get_user_trips(request):
                 "destination_long": trip.destination_long,
                 "created_at": trip.created_at.isoformat() if trip.created_at else None,
                 "updated_at": trip.updated_at.isoformat() if trip.updated_at else None,
+                "start_time": trip.start_time.isoformat() if trip.start_time else None,
                 "driverid": trip.driverid_id,
+                "approval_status": trip.approval_status,
             })
 
         return Response({

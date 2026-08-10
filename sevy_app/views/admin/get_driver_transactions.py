@@ -76,7 +76,8 @@ def get_driver_transactions(request):
                                 "start_place": trip.start_place_name,
                                 "destination": trip.destination_name,
                                 "total_price": float(trip.total_price) if trip.total_price else 0.0,
-                                "distance_km": trip.trip_distance_km
+                                "distance_km": trip.trip_distance_km,
+                                "customer_approval_status": trip.approval_status
                             })
                 if not booking_data and (t.transaction_type == 'carbooking' or t.related_id in booking_map):
                     booking = booking_map.get(t.related_id)
@@ -108,7 +109,9 @@ def get_driver_transactions(request):
                                 "car_name": f"{booking.car.brand} {booking.car.name}" if booking.car else "Unknown",
                                 "car_image": booking.car.images[0] if isinstance(booking.car.images, list) and len(booking.car.images) > 0 else (booking.car.images if isinstance(booking.car.images, str) else None),
                                 "customer_approval_status": booking.customer_approval_status,
-                                "driver_customer_approval": booking.driver_customer_approval
+                                "driver_customer_approval": booking.driver_customer_approval,
+                                "admin_driver_approval": booking.admin_driver_approval,
+                                "admin_company_approval": booking.admin_company_approval
                             })
             
             if not booking_data and t.transaction_type != 'withdrawal':

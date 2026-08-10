@@ -17,3 +17,4 @@ from .company import Company
 from .car_booking import CarBooking
 from .notification import Notification
 from .platform_commission import PlatformCommission
+from .password_reset import PasswordReset

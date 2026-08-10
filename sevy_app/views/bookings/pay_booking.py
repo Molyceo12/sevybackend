@@ -74,27 +74,31 @@ def pay_booking(request):
         if duration_days <= 0:
             duration_days = 1
 
-        # 1. Company Gross
-        company_gross = car_price * duration_days
-        
-        # 2. Driver Gross
-        driver_gross = 0.0
-        if booking.booking_type == 'with_driver' and booking.driver:
-            driver_gross = driver_daily_price * duration_days
+        # 1. Base Total
+        base_total = float(booking.total_price) if booking.total_price else (car_price * duration_days + (driver_daily_price * duration_days if booking.booking_type == 'with_driver' else 0.0))
+
+        # Security Check: Ensure the amount passed in the payload matches our backend math perfectly
+        if abs(total_amount - base_total) > 0.01:
+            return Response({
+                "code": 400,
+                "status": False,
+                "message": f"Payment amount mismatch. Expected {base_total}, but got {total_amount}.",
+                "body": {}
+            }, status=400)
+
+        # 2. Company Gross & Driver Gross (Scale them to base_total)
+        if booking.booking_type == 'with_driver' and (car_price + driver_daily_price) > 0:
+            car_ratio = car_price / (car_price + driver_daily_price)
+            driver_ratio = driver_daily_price / (car_price + driver_daily_price)
+            company_gross = base_total * car_ratio
+            driver_gross = base_total * driver_ratio
+        else:
+            company_gross = base_total
+            driver_gross = 0.0
         
         # 3. System Commission
         company_commission = company_gross * commission_rate
         driver_commission = driver_gross * commission_rate
-        
-        # Security Check: Ensure the amount passed in the payload matches our backend math perfectly
-        expected_total = company_gross + driver_gross + company_commission + driver_commission
-        if abs(total_amount - expected_total) > 0.01:
-            return Response({
-                "code": 400,
-                "status": False,
-                "message": f"Payment amount mismatch. Expected {expected_total}, but got {total_amount}.",
-                "body": {}
-            }, status=400)
             
         # 4. Final Payouts
         company_net = company_gross - company_commission
@@ -194,8 +198,8 @@ def pay_booking(request):
         # Schedule Driver 8-minute countdown (if applicable)
         if booking.booking_type == 'with_driver' and booking.driver:
             try:
-                booking_timeout_task.apply_async((booking.booking_id,), countdown=480)
-                print(f"Scheduled 8-minute timeout for booking {booking.booking_id} driver.")
+                booking_timeout_task.apply_async((booking.booking_id,), countdown=1800)
+                print(f"Scheduled 30-minute timeout for booking {booking.booking_id} driver.")
             except Exception as celery_err:
                 print(f"Failed to schedule booking timeout task: {celery_err}")
         
@@ -319,7 +323,7 @@ def pay_booking(request):
                         "Total Amount": f"{amount} RWF",
                         "Booking ID": booking.booking_number if hasattr(booking, 'booking_number') else booking.booking_id,
                         "Car": f"{booking.car.brand} {booking.car.name}",
-                        "Pickup Address": booking.delivery_address or "N/A",
+                        "Pickup Address": booking.pickup_location or "N/A",
                         "From Date": booking.start_date.strftime('%d %b %Y, %I:%M %p') if booking.start_date else "N/A",
                         "To Date": booking.end_date.strftime('%d %b %Y, %I:%M %p') if booking.end_date else "N/A",
                         "Transaction Time": customer_transaction.created_at.strftime('%d %b %Y, %I:%M %p') if hasattr(customer_transaction, 'created_at') else "N/A"

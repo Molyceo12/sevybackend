@@ -88,6 +88,7 @@ def get_trip_details(request):
             "distance": f"{trip.trip_distance_km} km" if trip.trip_distance_km else "Unknown",
             "payment_method": trip.payment_method,
             "service_type": trip.service_type,
+            "trip_type": getattr(trip, 'trip_type', 'instanttrip'),
             "transaction_id": trip.transaction_id,
             "trip_fare": trip_fare,
             "service_fee": service_fee,
@@ -95,7 +96,8 @@ def get_trip_details(request):
             "status": trip.status,
             "driver_status": trip.driver_status,
             "payment_status": trip.payment_status,
-            "created_at": trip.created_at
+            "created_at": trip.created_at,
+            "start_time": trip.start_time
         }
 
         return Response({

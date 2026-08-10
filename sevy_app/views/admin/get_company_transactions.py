@@ -60,7 +60,8 @@ def get_company_transactions(request):
                         "admin_company_approval": booking.admin_company_approval,
                         "admin_driver_approval": booking.admin_driver_approval,
                         "customer_approval_status": booking.customer_approval_status,
-                        "company_customer_approval": booking.company_customer_approval
+                        "company_customer_approval": booking.company_customer_approval,
+                        "has_driver": booking.driver is not None
                     })
             
             transaction_list.append({

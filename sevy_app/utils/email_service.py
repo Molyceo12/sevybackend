@@ -24,6 +24,10 @@ def send_customer_email(to_email, subject, template_name, context):
     from sevy_app.tasks import send_email_task
     try:
         send_email_task.delay(to_email, subject, template_name, context)
+        print(f"\n::::::::::::::::::::::::::::::::::::::::::::::::::::::::::email notification:::::::::::::::::::::::::::::::")
+        print(f":::::email shedulered successfully to celery::::::::::::::::")
+        print(f" head : {subject}, to: {to_email},")
+        print(f":::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::\n")
         return True
     except Exception as e:
         print(f"Failed to queue Email task: {str(e)}")

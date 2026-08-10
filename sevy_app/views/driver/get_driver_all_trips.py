@@ -48,7 +48,9 @@ def get_driver_all_trips(request):
                 "status": trip.status,
                 "driver_status": trip.driver_status,
                 "payment_status": trip.payment_status,
-                "created_at": trip.created_at
+                "created_at": trip.created_at,
+                "trip_type": getattr(trip, 'trip_type', 'instanttrip'),
+                "start_time": trip.start_time
             })
             
         return Response({
