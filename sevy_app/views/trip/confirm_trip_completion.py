@@ -109,7 +109,6 @@ def confirm_trip_completion(request):
 
         else:
             # Default to Accept
-            trip.status = 'completed'
             trip.approval_status = 'approved'
             trip.save()
             

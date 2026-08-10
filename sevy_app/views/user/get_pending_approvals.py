@@ -76,6 +76,7 @@ def get_pending_approvals(request):
                 "total_price": float(trip.total_price) if trip.total_price else 0.0,
                 "payment_method": trip.payment_method,
                 "service_type": trip.service_type,
+                "trip_type": getattr(trip, 'trip_type', 'instanttrip'),
                 "status": trip.status,
                 "driver_status": trip.driver_status,
                 "approval_status": trip.approval_status,

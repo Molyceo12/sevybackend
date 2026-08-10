@@ -152,13 +152,13 @@ def pay_trip(request):
         trip.transaction = customer_transaction
         trip.save()
         
-        # Trigger Celery timeout task for 8 minutes (480 seconds) for the driver
+        # Trigger Celery timeout task for 30 minutes (1800 seconds) for the driver
         from sevy_app.tasks import trip_timeout_task
         try:
             print(f"\n:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::")
             print(f"Trip {trip.trip_id} is paid and received in celery")
             print(f":::::::::::::::::::::::::::::::\n")
-            trip_timeout_task.apply_async((trip.trip_id, 'waiting'), countdown=480)
+            trip_timeout_task.apply_async((trip.trip_id, 'waiting'), countdown=1800)
         except Exception as celery_err:
             print(f"Failed to schedule celery task: {celery_err}")
         

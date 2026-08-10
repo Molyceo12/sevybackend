@@ -22,6 +22,7 @@ class Driver(models.Model):
     # Demographics & Experience
     sex = models.CharField(max_length=10, choices=(('Male', 'Male'), ('Female', 'Female')), default='Male')
     experience_years = models.IntegerField(default=0)
+    owns_car = models.BooleanField(default=False)
     
     # Financials
     balance = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)

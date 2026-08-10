@@ -33,48 +33,33 @@ def recover_pending_trips(sender, **kwargs):
         waiting_trips = Trip.objects.filter(status='upcoming', driver_status='waiting')
         for trip in waiting_trips:
             time_elapsed = (timezone.now() - trip.created_at).total_seconds()
-            remaining_time = max(0, 120 - int(time_elapsed))
+            remaining_time = max(0, 1800 - int(time_elapsed))
             
             print(f"Recovering waiting Trip {trip.trip_id} - Scheduled in {remaining_time}s")
-            try:
+            if remaining_time >= 0:
                 trip_timeout_task.apply_async((trip.trip_id, 'waiting'), countdown=remaining_time)
-            except Exception as e:
-                print(f"Failed to recover Trip {trip.trip_id}: {e}")
                 
-        # 2. Recover trips where driver is 'ready' (3 mins timeout to say 'coming')
-        # Note: driver_status='ready' means they accepted but haven't started moving towards the customer
-        ready_trips = Trip.objects.filter(driver_status='ready')
-        # Only recover if they are in an active state (upcoming or active)
-        ready_trips = [t for t in ready_trips if t.status in ['upcoming', 'active']]
-        
-        for trip in ready_trips:
-            time_elapsed = (timezone.now() - trip.created_at).total_seconds()
-            remaining_time = max(0, 180 - int(time_elapsed))
+        # 2. Re-schedule 'ready' timeouts (15 minutes limit)
+        active_ready = Trip.objects.filter(driver_status='ready', status__in=['upcoming', 'active'])
+        for trip in active_ready:
+            time_passed = (now - trip.created_at).total_seconds()
+            remaining_time = max(900 - int(time_passed), 0) # 15 minutes limit for ready
             
             print(f"Recovering ready Trip {trip.trip_id} - Scheduled in {remaining_time}s")
-            try:
+            if remaining_time >= 0:
                 trip_timeout_task.apply_async((trip.trip_id, 'ready'), countdown=remaining_time)
-            except Exception as e:
-                print(f"Failed to recover Trip {trip.trip_id}: {e}")
                 
-        # 3. Recover pending bookings (2 mins timeout)
-        from sevy_app.models import CarBooking
-        from sevy_app.tasks import booking_timeout_task
-        
-        pending_bookings = CarBooking.objects.filter(status='pending', driver__isnull=False)
-        for booking in pending_bookings:
-            time_elapsed = (timezone.now() - booking.created_at).total_seconds()
-            remaining_time = max(0, 120 - int(time_elapsed))
+        # 3. Re-schedule car booking driver timeouts
+        active_bookings = CarBooking.objects.filter(status='pending', driver__isnull=False)
+        for booking in active_bookings:
+            time_passed = (now - booking.created_at).total_seconds()
+            remaining_time = max(1800 - int(time_passed), 0) # 30 minutes limit
             
             print(f"Recovering pending Booking {booking.booking_id} - Scheduled in {remaining_time}s")
-            try:
+            if remaining_time >= 0:
                 booking_timeout_task.apply_async((booking.booking_id,), countdown=remaining_time)
-            except Exception as e:
-                print(f"Failed to recover Booking {booking.booking_id}: {e}")
 
         # 4. Recover pending trip completions (7 mins timeout)
-        from sevy_app.tasks import auto_accept_trip_completion_task
-        
         pending_completions = Trip.objects.filter(approval_status='requestsent')
         for trip in pending_completions:
             base_time = trip.updated_at if trip.updated_at else trip.created_at

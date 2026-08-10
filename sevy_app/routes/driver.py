@@ -14,6 +14,7 @@ from ..views.driver.get_details import get_driver_details
 from ..views.driver.toggle_availability import toggle_availability
 from ..views.driver.update_documents import update_driver_documents
 from ..views.driver.update_vehicle import update_driver_vehicle
+from ..views.driver.update_profile import update_driver_profile
 
 urlpatterns = [
     path('location/update/', update_driver_location, name='update_driver_location'),
@@ -31,4 +32,5 @@ urlpatterns = [
     path('toggle_availability/', toggle_availability, name='toggle_availability'),
     path('<str:driver_id>/update-documents/', update_driver_documents, name='update_driver_documents'),
     path('<str:driver_id>/update-vehicle/', update_driver_vehicle, name='update_driver_vehicle'),
+    path('<str:driver_id>/update-profile/', update_driver_profile, name='update_driver_profile'),
 ]

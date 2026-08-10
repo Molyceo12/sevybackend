@@ -67,7 +67,9 @@ def get_driver_trips_and_bookings(request):
                 "approval_status": trip.approval_status,
                 "payment_status": trip.payment_status,
                 "service_type": trip.service_type,
-                "created_at": trip.created_at
+                "trip_type": getattr(trip, 'trip_type', 'instanttrip'),
+                "created_at": trip.created_at,
+                "start_time": trip.start_time
             })
         
         # Add bookings to body

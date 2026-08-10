@@ -98,9 +98,12 @@ def create_booking(request):
                 related_id=booking.booking_id
             )
             
-            # Start the 8-minute timeout task
-            from sevy_app.tasks import booking_timeout_task
-            booking_timeout_task.apply_async((booking.booking_id,), countdown=480)
+            # Start the timeout task
+            try:
+                from sevy_app.tasks import booking_timeout_task
+                booking_timeout_task.apply_async((booking.booking_id,), countdown=1800)
+            except Exception as celery_err:
+                pass
 
         # Notify the customer
         from sevy_app.models import Notification

@@ -109,6 +109,8 @@ def get_driver_details(request):
             "plate_number": driver.plate_number,
             "experience_years": driver.experience_years,
             "sex": driver.sex,
+            "owns_car": getattr(driver, 'owns_car', False),
+            "home_location_name": driver.home_location_name,
             "is_approved": driver.is_approved,
             "is_available": driver.is_available,
             "total_trips": total_trips_count,
