@@ -23,7 +23,9 @@ def manage_system_config(request):
                     "choose_driver_fee_percentage": float(config.choose_driver_fee_percentage),
                     "platform_commission_percentage": float(config.platform_commission_percentage),
                     "total_revenue": float(config.total_revenue),
-                    "gross_income": float(config.gross_income)
+                    "gross_income": float(config.gross_income),
+                    "app_version": config.app_version,
+                    "release_notes": config.release_notes
                 }
             }, status=200)
 
@@ -40,6 +42,10 @@ def manage_system_config(request):
                 config.choose_driver_fee_percentage = data['choose_driver_fee_percentage']
             if 'platform_commission_percentage' in data:
                 config.platform_commission_percentage = data['platform_commission_percentage']
+            if 'app_version' in data:
+                config.app_version = data['app_version']
+            if 'release_notes' in data:
+                config.release_notes = data['release_notes']
 
             config.save()
 
@@ -53,6 +59,8 @@ def manage_system_config(request):
                     "driver_only_cost_per_km": float(config.driver_only_cost_per_km),
                     "choose_driver_fee_percentage": float(config.choose_driver_fee_percentage),
                     "platform_commission_percentage": float(config.platform_commission_percentage),
+                    "app_version": config.app_version,
+                    "release_notes": config.release_notes
                 }
             }, status=200)
             

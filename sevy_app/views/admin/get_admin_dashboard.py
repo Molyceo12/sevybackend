@@ -3,7 +3,7 @@ from datetime import timedelta
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from sevy_app.models import CustomUser, Company, Driver, SystemConfig, Transaction
+from sevy_app.models import CustomUser, Company, Driver, SystemConfig, Transaction, Trip, CarBooking
 from django.db.models import Sum
 
 def get_stats_for_period(start_date=None):
@@ -20,6 +20,8 @@ def get_stats_for_period(start_date=None):
             
         revenue_aggr = Transaction.objects.filter(created_at__gte=start_date, status='completed').aggregate(Sum('amount'))
         total_revenue = float(revenue_aggr['amount__sum'] or 0.0)
+        
+        total_bookings = Trip.objects.filter(created_at__gte=start_date).count() + CarBooking.objects.filter(created_at__gte=start_date).count()
     else:
         company_count = Company.objects.count()
         if company_count == 0:
@@ -38,11 +40,14 @@ def get_stats_for_period(start_date=None):
             revenue_aggr = Transaction.objects.filter(status='completed').aggregate(Sum('amount'))
             total_revenue = float(revenue_aggr['amount__sum'] or 0.0)
             
+        total_bookings = Trip.objects.count() + CarBooking.objects.count()
+            
     return {
         "total_companies": company_count,
         "total_customers": customer_count,
         "total_drivers": driver_count,
-        "total_revenue": total_revenue
+        "total_revenue": total_revenue,
+        "total_bookings": total_bookings
     }
 
 @api_view(['GET', 'POST'])

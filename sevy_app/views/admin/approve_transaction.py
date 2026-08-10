@@ -49,7 +49,7 @@ def approve_transaction(request):
     transaction.save()
 
     # 2. Update status to completed in PlatformCommission table using transaction_id
-    from sevy_app.models import PlatformCommission, CarBooking
+    from sevy_app.models import PlatformCommission, CarBooking, Trip
     PlatformCommission.objects.filter(transaction=transaction).update(status='completed')
 
     # Update adminapprovalfor if this relates to a CarBooking
@@ -60,6 +60,13 @@ def approve_transaction(request):
         booking = CarBooking.objects.filter(transaction=transaction).first()
     if not booking and transaction_id:
         booking = CarBooking.objects.filter(booking_id=transaction_id).first()
+
+    # Get Trip if this relates to a Trip
+    trip = None
+    if transaction.related_id:
+        trip = Trip.objects.filter(trip_id=transaction.related_id).first()
+    if not trip:
+        trip = Trip.objects.filter(transaction=transaction).first()
 
     # Determine if the user is a company or driver and update their balance
     recipient_type = "User"
@@ -76,6 +83,8 @@ def approve_transaction(request):
                 company.save()
             if booking:
                 booking.admin_company_approval = 'approved'
+                if booking.admin_driver_approval == 'approved' or not booking.driver:
+                    booking.status = 'completed'
                 booking.save()
 
             recipient_type = "Company"
@@ -139,7 +148,12 @@ def approve_transaction(request):
                 driver.save()
             if booking:
                 booking.admin_driver_approval = 'approved'
+                if booking.admin_company_approval == 'approved':
+                    booking.status = 'completed'
                 booking.save()
+            if trip:
+                trip.status = 'completed'
+                trip.save()
 
             recipient_type = "Driver"
 

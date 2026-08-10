@@ -6,8 +6,12 @@ def send_fcm_notification(user, title, body, data=None, image=None):
     """
     from sevy_app.tasks import send_fcm_notification_task
     try:
-        if user and user.id:
-            send_fcm_notification_task.delay(user.id, title, body, data, image)
+        if user and user.pk:
+            send_fcm_notification_task.delay(user.pk, title, body, data, image)
+            print(f"\n::::::::::::::::::::::::::::::::::::::::::::::::::::::::::fcm notification:::::::::::::::::::::::::::::::")
+            print(f":::::notification shedulered successfully to celery::::::::::::::::")
+            print(f" head : {title}, body: {body},")
+            print(f":::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::\n")
             return True
     except Exception as e:
         print(f"Failed to queue FCM task: {str(e)}")
@@ -80,6 +84,9 @@ def _execute_send_fcm_notification(user, title, body, data=None, image=None):
         print(f"3.Failed to send : {response.failure_count}")
         if response.failure_count > 0:
             print(f"4.Target User : {user.email} (Some devices failed)")
+            for idx, resp in enumerate(response.responses):
+                if not resp.success:
+                    print(f"   -> Token {tokens[idx][-10:]} failed: {resp.exception}")
         else:
             print(f"4.Target User : {user.email}")
         print(f"::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::\n")

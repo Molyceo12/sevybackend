@@ -50,10 +50,11 @@ def get_transaction_details(request):
         service_type = None
         booking_number = None
         trip_number = None
+        trip = None
+        trip_distance_km = 0.0
         
         admin_company_approval = 'none'
         admin_driver_approval = 'none'
-
 
         company_payout = float(transaction.amount or 0.0)
 
@@ -187,7 +188,9 @@ def get_transaction_details(request):
             "rental_end_date": rental_end_date,
             "customer_name": customer_name,
             "fee_breakdown": fee_breakdown,
-            "service_type": service_type
+            "service_type": service_type,
+            "trip_type": getattr(trip, 'trip_type', 'instanttrip') if trip else None,
+            "trip_distance_km": trip_distance_km
         }
         
         return Response({

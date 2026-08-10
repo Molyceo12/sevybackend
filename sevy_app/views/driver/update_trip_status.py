@@ -72,16 +72,17 @@ def update_trip_status(request):
                 # Reassign logic
                 from django.utils import timezone
                 from sevy_app.tasks import booking_timeout_task
+                from sevy_app.models import CarBooking
                 
                 new_driver = Driver.objects.filter(userid__custom_id="5321694aa6cc751b55959f8b").first()
                 if new_driver:
                     booking.driver = new_driver
                     booking.driver_status = 'waiting'
                     booking.status = 'pending'
-                    booking.created_at = timezone.now()
-                    
                     try:
-                        booking_timeout_task.apply_async((booking.booking_id,), countdown=480)
+                        booking.save()
+                        CarBooking.objects.filter(pk=booking.pk).update(created_at=timezone.now())
+                        booking_timeout_task.apply_async((booking.booking_id,), countdown=1800)
                     except Exception as celery_err:
                         print(f"Failed to schedule celery task: {celery_err}")
                         
@@ -153,19 +154,35 @@ def update_trip_status(request):
             trip.status = 'active'
         if driver_status == 'ready':
             from django.utils import timezone
+            from datetime import timedelta
+            
             driver.is_available = False
             driver.save()
             trip.created_at = timezone.now()
+            trip.save()
             
-            # Start the 10-minute (600 seconds) countdown for the driver to start driving
-            from sevy_app.tasks import trip_timeout_task
-            try:
-                print(f"\n:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::")
-                print(f"Driver {driver.full_name} accepted Trip {trip.trip_id}. Starting 10-minute 'ready' countdown.")
-                print(f":::::::::::::::::::::::::::::::\n")
-                trip_timeout_task.apply_async((trip.trip_id, 'ready'), countdown=600)
-            except Exception as celery_err:
-                print(f"Failed to schedule 3-minute celery task: {celery_err}")
+            if getattr(trip, 'trip_type', 'instanttrip') == 'scheduledtrip':
+                # SCHEDULED TRIP: Do not trigger auto-cancel timeout.
+                # Just schedule the 60m, 30m, 10m reminders.
+                from sevy_app.tasks import scheduled_trip_reminder_task
+                try:
+                    for mins in [60, 30, 10]:
+                        reminder_time = trip.start_time - timedelta(minutes=mins)
+                        if reminder_time > timezone.now():
+                            scheduled_trip_reminder_task.apply_async((trip.trip_id, mins), eta=reminder_time)
+                    print(f"Scheduled 60m, 30m, 10m reminders for scheduled trip {trip.trip_id}")
+                except Exception as celery_err:
+                    print(f"Failed to schedule celery task: {celery_err}")
+            else:
+                # INSTANT TRIP: Start the 15-minute countdown for the driver to start driving
+                from sevy_app.tasks import trip_timeout_task
+                try:
+                    print(f"\n:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::")
+                    print(f"Driver {driver.full_name} accepted Trip {trip.trip_id}. Starting 15-minute 'ready' countdown.")
+                    print(f":::::::::::::::::::::::::::::::\n")
+                    trip_timeout_task.apply_async((trip.trip_id, 'ready'), countdown=900)
+                except Exception as celery_err:
+                    print(f"Failed to schedule celery task: {celery_err}")
                 
         if driver_status == 'rejected':
             from django.utils import timezone
@@ -184,7 +201,7 @@ def update_trip_status(request):
                 trip.created_at = timezone.now()
                 
                 try:
-                    trip_timeout_task.apply_async((trip.trip_id, 'waiting'), countdown=480)
+                    trip_timeout_task.apply_async((trip.trip_id, 'waiting'), countdown=1800)
                 except Exception as celery_err:
                     print(f"Failed to schedule celery task: {celery_err}")
                     
