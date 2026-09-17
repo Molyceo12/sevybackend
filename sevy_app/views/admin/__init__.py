@@ -16,3 +16,4 @@ from .get_platform_finance import get_platform_finance
 from .system_config import manage_system_config
 from .approve_withdrawal import approve_withdrawal
 from .reject_withdrawal import reject_withdrawal
+from .get_app_version import get_app_version
