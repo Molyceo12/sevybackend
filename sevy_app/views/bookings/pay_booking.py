@@ -185,15 +185,19 @@ def pay_booking(request):
         booking.transaction = customer_transaction
         
         # Schedule Car Availability Tasks via Celery
-        from sevy_app.tasks import mark_car_unavailable_task, mark_car_available_task, booking_timeout_task
+        from sevy_app.tasks import mark_car_unavailable_task, mark_car_available_task, booking_timeout_task, mark_driver_unavailable_task, mark_driver_available_task
         
         try:
             if booking.car:
                 mark_car_unavailable_task.apply_async((booking.car.car_id,), eta=booking.start_date)
                 mark_car_available_task.apply_async((booking.car.car_id,), eta=booking.end_date)
                 print(f"Scheduled car {booking.car.car_id} availability tasks for booking {booking.booking_id}")
+            if booking.booking_type == 'with_driver' and booking.driver:
+                mark_driver_unavailable_task.apply_async((booking.driver.driver_id,), eta=booking.start_date)
+                mark_driver_available_task.apply_async((booking.driver.driver_id,), eta=booking.end_date)
+                print(f"Scheduled driver {booking.driver.driver_id} availability tasks for booking {booking.booking_id}")
         except Exception as celery_err:
-            print(f"Failed to schedule car availability tasks: {celery_err}")
+            print(f"Failed to schedule car/driver availability tasks: {celery_err}")
             
         # Schedule Driver 8-minute countdown (if applicable)
         if booking.booking_type == 'with_driver' and booking.driver:

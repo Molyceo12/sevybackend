@@ -1,5 +1,5 @@
 from django.urls import path
-from sevy_app.views.admin import get_companies, get_users, get_drivers, get_revenue, get_requests, get_company_requests, get_company_transactions, admin_profile, get_driver_requests, get_driver_transactions, get_admin_dashboard, approve_transaction, reject_transaction, review_driver_request, get_platform_finance, manage_system_config, approve_withdrawal, reject_withdrawal
+from sevy_app.views.admin import get_companies, get_users, get_drivers, get_revenue, get_requests, get_company_requests, get_company_transactions, admin_profile, get_driver_requests, get_driver_transactions, get_admin_dashboard, approve_transaction, reject_transaction, review_driver_request, get_platform_finance, manage_system_config, approve_withdrawal, reject_withdrawal, get_app_version
 from sevy_app.views.admin.get_user_context import get_user_context
 
 urlpatterns = [
@@ -22,4 +22,5 @@ urlpatterns = [
     path('withdrawals/reject/', reject_withdrawal, name='admin_reject_withdrawal'),
     path('finance/', get_platform_finance, name='admin_get_platform_finance'),
     path('config/', manage_system_config, name='admin_system_config'),
+    path('app-version/', get_app_version, name='admin_get_app_version'),
 ]

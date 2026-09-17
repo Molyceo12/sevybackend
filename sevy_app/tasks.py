@@ -122,6 +122,28 @@ def mark_car_available_task(car_id):
         pass
 
 @shared_task
+def mark_driver_unavailable_task(driver_id):
+    from sevy_app.models import Driver
+    try:
+        driver = Driver.objects.get(driver_id=driver_id)
+        driver.is_available = False
+        driver.save()
+        print(f"Driver {driver.full_name} marked as unavailable.")
+    except Driver.DoesNotExist:
+        pass
+
+@shared_task
+def mark_driver_available_task(driver_id):
+    from sevy_app.models import Driver
+    try:
+        driver = Driver.objects.get(driver_id=driver_id)
+        driver.is_available = True
+        driver.save()
+        print(f"Driver {driver.full_name} marked as available.")
+    except Driver.DoesNotExist:
+        pass
+
+@shared_task
 def booking_timeout_task(booking_id):
     from sevy_app.models import CarBooking
     try:

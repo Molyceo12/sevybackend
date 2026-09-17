@@ -66,6 +66,11 @@ def request_trip_completion(request):
         trip.approval_status = 'requestsent'
         trip.save()
         
+        # Make the driver available immediately after requesting completion
+        if trip.driverid:
+            trip.driverid.is_available = True
+            trip.driverid.save()
+        
         # Schedule the Celery task to auto-accept the trip after 7 minutes (420 seconds) for testing
         from sevy_app.tasks import auto_accept_trip_completion_task
         auto_accept_trip_completion_task.apply_async(args=[trip.trip_id], countdown=420)

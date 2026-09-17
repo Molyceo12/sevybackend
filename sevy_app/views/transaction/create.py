@@ -81,6 +81,14 @@ def create_transaction(request):
             trip.payment_status = 'paid'
         trip.save()
         
+        if trip.driverid:
+            from sevy_app.tasks import mark_driver_unavailable_task
+            try:
+                mark_driver_unavailable_task.apply_async((trip.driverid.driver_id,), eta=trip.start_time)
+                print(f"Scheduled driver {trip.driverid.driver_id} to be unavailable at {trip.start_time} for trip {trip.trip_id}")
+            except Exception as celery_err:
+                print(f"Failed to schedule driver unavailability: {celery_err}")
+        
         # Create a notification for the driver
         # Removed as transaction is pending admin approval
 

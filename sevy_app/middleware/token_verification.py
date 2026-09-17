@@ -25,6 +25,7 @@ class TokenVerificationMiddleware(MiddlewareMixin):
             f'{api_prefix}token/refresh/',
             f'{api_prefix}forgot-password/',
             f'{api_prefix}reset-password/',
+            f'{api_prefix}admin/app-version/',
         ]
         
         # We only verify requests that go to /api/

@@ -72,6 +72,28 @@ def recover_pending_trips(sender, **kwargs):
             except Exception as e:
                 print(f"Failed to recover Trip Completion {trip.trip_id}: {e}")
 
+        # 5. Recover Driver/Car Availability for Bookings
+        from sevy_app.tasks import mark_car_unavailable_task, mark_car_available_task, mark_driver_unavailable_task, mark_driver_available_task
+        paid_bookings = CarBooking.objects.filter(payment_status='paid').exclude(status__in=['completed', 'cancelled'])
+        for booking in paid_bookings:
+            if booking.start_date and booking.start_date > timezone.now():
+                if booking.car:
+                    mark_car_unavailable_task.apply_async((booking.car.car_id,), eta=booking.start_date)
+                if booking.booking_type == 'with_driver' and booking.driver:
+                    mark_driver_unavailable_task.apply_async((booking.driver.driver_id,), eta=booking.start_date)
+            
+            if booking.end_date and booking.end_date > timezone.now():
+                if booking.car:
+                    mark_car_available_task.apply_async((booking.car.car_id,), eta=booking.end_date)
+                if booking.booking_type == 'with_driver' and booking.driver:
+                    mark_driver_available_task.apply_async((booking.driver.driver_id,), eta=booking.end_date)
+
+        # 6. Recover Driver Unavailability for Trips
+        paid_trips = Trip.objects.filter(payment_status='paid').exclude(status__in=['completed', 'cancelled'])
+        for trip in paid_trips:
+            if trip.start_time and trip.start_time > timezone.now() and trip.driverid:
+                mark_driver_unavailable_task.apply_async((trip.driverid.driver_id,), eta=trip.start_time)
+
 
         print("=========================================================\n")
     except Exception as e:

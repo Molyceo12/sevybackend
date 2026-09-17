@@ -153,12 +153,16 @@ def pay_trip(request):
         trip.save()
         
         # Trigger Celery timeout task for 30 minutes (1800 seconds) for the driver
-        from sevy_app.tasks import trip_timeout_task
+        from sevy_app.tasks import trip_timeout_task, mark_driver_unavailable_task
         try:
             print(f"\n:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::")
             print(f"Trip {trip.trip_id} is paid and received in celery")
             print(f":::::::::::::::::::::::::::::::\n")
             trip_timeout_task.apply_async((trip.trip_id, 'waiting'), countdown=1800)
+            
+            if trip.driverid:
+                mark_driver_unavailable_task.apply_async((trip.driverid.driver_id,), eta=trip.start_time)
+                print(f"Scheduled driver {trip.driverid.driver_id} to be unavailable at {trip.start_time} for trip {trip.trip_id}")
         except Exception as celery_err:
             print(f"Failed to schedule celery task: {celery_err}")
         

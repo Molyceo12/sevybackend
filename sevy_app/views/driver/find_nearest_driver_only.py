@@ -3,15 +3,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from sevy_app.models import DriverLocation, Driver, SystemConfig
-
-def haversine(lat1, lon1, lat2, lon2):
-    """Calculate the great-circle distance between two points on the Earth surface."""
-    R = 6371.0 # Radius of the earth in km
-    dlat = math.radians(lat2 - lat1)
-    dlon = math.radians(lon2 - lon1)
-    a = math.sin(dlat / 2)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon / 2)**2
-    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
-    return R * c
+from sevy_app.utils.mapbox_utils import get_driving_distance_km
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
@@ -76,7 +68,7 @@ def find_nearest_driver_only(request):
         min_distance = 2.5 # mock distance
         
         # Calculate actual trip distance and driver distance
-        trip_distance_km = round(haversine(start_lat, start_long, dest_lat, dest_long), 2)
+        trip_distance_km = get_driving_distance_km(start_lat, start_long, dest_lat, dest_long)
         driver_distance_km = round(min_distance, 2)
         
         # Fetch pricing configuration
