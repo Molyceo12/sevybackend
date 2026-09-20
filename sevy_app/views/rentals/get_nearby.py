@@ -3,6 +3,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from sevy_app.models import Car
+from sevy_app.utils.mapbox_utils import get_driving_distance_km
 
 def haversine(lat1, lon1, lat2, lon2):
     """Calculate the great-circle distance between two points on the Earth surface."""
@@ -66,18 +67,30 @@ def get_nearby_cars(request):
                 "created_at": car.created_at
             })
 
-        # Sort cars by distance
+        # Sort cars by haversine distance
         # Filter out cars that don't have a valid distance first, push them to the end
         cars_data.sort(key=lambda x: (x['distance_km'] is None, x['distance_km']))
         
-        # Return only top 3 nearest cars
-        cars_data = cars_data[:3]
+        # Take top 3 nearest cars
+        top_cars = cars_data[:3]
+        
+        # Calculate true road distance for the top cars using Mapbox
+        for car_data in top_cars:
+            if car_data['location_lat'] and car_data['location_long']:
+                real_dist = get_driving_distance_km(
+                    user_lat, user_long, 
+                    car_data['location_lat'], car_data['location_long']
+                )
+                car_data['distance_km'] = real_dist
+                
+        # Re-sort the top 3 just in case the real distances changed the order
+        top_cars.sort(key=lambda x: (x['distance_km'] is None, x['distance_km']))
 
         return Response({
             "code": 200,
             "status": True,
-            "message": f"Found {len(cars_data)} nearest cars.",
-            "body": cars_data
+            "message": f"Found {len(top_cars)} nearest cars.",
+            "body": top_cars
         }, status=200)
 
     except ValueError:

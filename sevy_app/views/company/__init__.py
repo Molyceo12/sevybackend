@@ -11,3 +11,4 @@ from .delete_company import delete_company
 from .register_company import register_company
 from .review_company import review_company
 from .update_documents import update_company_documents
+from .edit_company import edit_company

@@ -45,7 +45,7 @@ def _execute_send_customer_email(to_email, subject, template_name, context):
         html_content = render_to_string(f'emails/{template_name}', context)
         
         params = {
-            "from": "Sevy Mobility <onboarding@resend.dev>",
+            "from": "Sevy Mobility <hello@mail.sevymobility.com>",
             "to": [to_email],
             "subject": subject,
             "html": html_content,

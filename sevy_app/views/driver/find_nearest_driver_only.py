@@ -3,7 +3,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from sevy_app.models import DriverLocation, Driver, SystemConfig
-from sevy_app.utils.mapbox_utils import get_driving_distance_km
+from sevy_app.utils.mapbox_utils import get_driving_distance_km, haversine
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
@@ -37,39 +37,18 @@ def find_nearest_driver_only(request):
                 "body": {}
             }, status=404)
 
-        # nearest_driver_loc = None
-        # min_distance = float('inf')
-
-        # Find the nearest driver using Haversine formula
-        # for loc in locations:
-        #     # You might want to filter only approved/online drivers here in the future
-        #     dist = haversine(start_lat, start_long, loc.lat, loc.long)
-        #     if dist < min_distance:
-        #         min_distance = dist
-        #         nearest_driver_loc = loc
-
-        # if not nearest_driver_loc:
-        #      return Response({
-        #         "code": 404,
-        #         "status": False,
-        #         "message": "No nearby drivers found.",
-        #         "body": {}
-        #     }, status=404)
-
-        # Fetch driver profile details from the Driver table
-        # driver_profile = Driver.objects.filter(userid=nearest_driver_loc.userid).first()
-
         # MOCK: Always return this specific driver for testing
         driver_profile = Driver.objects.filter(userid__custom_id="1a53c42d5499a1aad141d585").first()
         if not driver_profile:
             return Response({"code": 404, "status": False, "message": "Mock driver not found", "body": {}}, status=404)
         
         nearest_driver_loc = DriverLocation.objects.filter(userid=driver_profile.userid).first()
-        min_distance = 2.5 # mock distance
         
-        # Calculate actual trip distance and driver distance
+        # Calculate actual trip distance using Mapbox
         trip_distance_km = get_driving_distance_km(start_lat, start_long, dest_lat, dest_long)
-        driver_distance_km = round(min_distance, 2)
+        
+        # Calculate driver's distance using Mapbox for accurate ETA/distance (haversine was just for fast lookup)
+        driver_distance_km = get_driving_distance_km(start_lat, start_long, nearest_driver_loc.lat, nearest_driver_loc.long)
         
         # Fetch pricing configuration
         sys_config = SystemConfig.objects.first()

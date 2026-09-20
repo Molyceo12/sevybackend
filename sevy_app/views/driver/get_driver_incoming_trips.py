@@ -38,10 +38,10 @@ def get_driver_incoming_trips(request):
             status__in=['upcoming', 'active']
         ).select_related('userid')
         
-        # Get incoming bookings (pending only - waiting for action)
+        # Get incoming bookings (pending or confirmed by company, but waiting for driver action)
         bookings = CarBooking.objects.filter(
             driver=driver,
-            status='pending',
+            status__in=['pending', 'confirmed'],
             driver_status='waiting'
         ).select_related('user', 'car', 'companyid')
         

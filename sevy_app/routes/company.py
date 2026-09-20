@@ -1,5 +1,5 @@
 from django.urls import path
-from sevy_app.views.company import get_company_bookings, get_company_transactions, get_company_requests, get_company_dashboard, get_company_cars, create_car, edit_car, get_latest_cars, withdraw, delete_company, register_company, review_company, update_company_documents
+from sevy_app.views.company import get_company_bookings, get_company_transactions, get_company_requests, get_company_dashboard, get_company_cars, create_car, edit_car, get_latest_cars, withdraw, delete_company, register_company, review_company, update_company_documents, edit_company
 from sevy_app.views.company.get_explore import get_company_explore
 from sevy_app.views.company.add_explore import add_company_explore
 from sevy_app.views.company.delete_explore import delete_company_explore
@@ -23,4 +23,5 @@ urlpatterns = [
     path('register/', register_company, name='register_company'),
     path('review/', review_company, name='review_company'),
     path('<str:company_id>/update-documents/', update_company_documents, name='update_company_documents'),
+    path('<str:company_id>/edit/', edit_company, name='edit_company'),
 ]

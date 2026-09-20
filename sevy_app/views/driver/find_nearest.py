@@ -59,8 +59,8 @@ def find_nearest_driver(request):
         # Fetch driver profile details from the Driver table
         # driver_profile = Driver.objects.filter(userid=nearest_driver_loc.userid).first()
 
-        # MOCK: Always return this specific driver for testing
-        driver_profile = Driver.objects.filter(userid__custom_id="1a53c42d5499a1aad141d585").first()
+        # MOCK: Return a driver that actually owns a car for the standard trip
+        driver_profile = Driver.objects.filter(owns_car=True).first()
         if not driver_profile:
             return Response({"code": 404, "status": False, "message": "Mock driver not found", "body": {}}, status=404)
         
